@@ -1,0 +1,5 @@
+JACK-Client
+jack_server
+NumPy
+mido
+python-rtmidi
