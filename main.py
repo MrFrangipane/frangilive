@@ -7,6 +7,8 @@ import mido
 
 
 print("Starting JACK...")
+subprocess.check_output(["jack_control", "ds", "alsa"])
+subprocess.check_output(["jack_control", "dps", "device", "hw:5"])  # fireface
 subprocess.check_output(["jack_control", "start"])
 
 print("Starting Overwitch...")
@@ -27,11 +29,14 @@ print("JACK MIDI ports")
 pp(client.get_ports(is_midi=True))
 
 try:
-    client.connect('Syntakt:Main L', 'Digitone:Main L Input')
-    client.connect('Syntakt:Main R', 'Digitone:Main R Input')
+    client.connect('Digitone:Main L', 'system:playback_1')
+    client.connect('Digitone:Main R', 'system:playback_2')
+
+    client.connect('Syntakt:Main L', 'system:playback_1')
+    client.connect('Syntakt:Main R', 'system:playback_2')
     
-    client.connect('Digitakt:Main L', 'Digitone:Main L Input')
-    client.connect('Digitakt:Main R', 'Digitone:Main R Input')
+    client.connect('Digitakt:Main L', 'system:playback_1')
+    client.connect('Digitakt:Main R', 'system:playback_2')
 
 except jack.JackError:
     raise IOError("Could not connect JACK ports. Are your synths powered on and connected ?")
