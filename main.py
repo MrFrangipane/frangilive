@@ -27,6 +27,9 @@ if detected_number == "":
 print("Starting JACK...")
 subprocess.check_output(["jack_control", "ds", "alsa"])
 subprocess.check_output(["jack_control", "dps", "device", "hw:" + detected_number])
+# Set buffer size and periods per buffer to achieve low latency (defaults to 1024/2048)
+subprocess.check_output(["jack_control", "dps", "period", "128"])
+subprocess.check_output(["jack_control", "dps", "nperiods", "3"])
 subprocess.check_output(["jack_control", "start"])
 
 print("Starting Overwitch...")
