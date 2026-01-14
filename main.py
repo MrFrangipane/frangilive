@@ -12,13 +12,12 @@ logging.basicConfig(level=logging.INFO)
 
 #
 # AUDIO
-
 audio_router = make_audio_router(
     buffer_size=128,
     class_=RaspberryPiAudioRouter,  # FIXME use dependency injector ?
     connection_type=InterfaceConnectionType.USB,
     driver="alsa",
-    interface_name="fireface"
+    interface_name="Fireface"
 )
 
 fireface = AudioInstrument(
@@ -41,10 +40,27 @@ mf_101 = AudioInstrument(
     ]
 )
 
+murf = AudioInstrument(
+    name="MuRF",
+    inputs=[
+        AudioPort("Main L", "system:playback_6"),
+    ],
+    outputs=[
+        AudioPort("Main LR", "system:capture_3", "system:capture_4"),
+    ]
+)
+
 digitakt = AudioInstrument(
     name="Digitakt",
     outputs=[
         AudioPort("Main LR", "Digitakt:Main L", "Digitakt:Main R"),
+        AudioPort("Track 1", "Digitakt:Track 1"),
+        AudioPort("Track 2", "Digitakt:Track 2"),
+        AudioPort("Track 3", "Digitakt:Track 3"),
+        AudioPort("Track 4", "Digitakt:Track 4"),
+        AudioPort("Track 5", "Digitakt:Track 5"),
+        AudioPort("Track 6", "Digitakt:Track 6"),
+        AudioPort("Track 7", "Digitakt:Track 7"),
         AudioPort("Track 8", "Digitakt:Track 8"),
     ]
 )
@@ -53,6 +69,29 @@ syntakt = AudioInstrument(
     name="Syntakt",
     outputs=[
         AudioPort("Main LR", "Syntakt:Main L", "Syntakt:Main R"),
+        AudioPort("Track 1", "Syntakt:Track 1"),
+        AudioPort("Track 2", "Syntakt:Track 2"),
+        AudioPort("Track 3", "Syntakt:Track 3"),
+        AudioPort("Track 4", "Syntakt:Track 4"),
+        AudioPort("Track 5", "Syntakt:Track 5"),
+        AudioPort("Track 6", "Syntakt:Track 6"),
+        AudioPort("Track 7", "Syntakt:Track 7"),
+        AudioPort("Track 8", "Syntakt:Track 8"),
+        AudioPort("Track 9", "Syntakt:Track 9"),
+        AudioPort("Track 10", "Syntakt:Track 10"),
+        AudioPort("Track 11", "Syntakt:Track 11"),
+        AudioPort("Track 12", "Syntakt:Track 12"),
+    ]
+)
+
+digitone = AudioInstrument(
+    name="Digitone",
+    outputs=[
+        AudioPort("Main LR", "Digitone:Main L", "Digitone:Main R"),
+        AudioPort("Track 1", "Digitone:Track 1"),
+        AudioPort("Track 2", "Digitone:Track 2"),
+        AudioPort("Track 3", "Digitone:Track 3"),
+        AudioPort("Track 4", "Digitone:Track 4"),
     ]
 )
 
@@ -66,13 +105,30 @@ time_factor = AudioInstrument(
     ]
 )
 
+big_sky = AudioInstrument(
+    name="Big Sky",
+    inputs=[
+        AudioPort("Main L", "system:playback_4")
+    ],
+    outputs=[
+        AudioPort("Main LR", "system:capture_5", "system:capture_6")
+    ]
+)
+
 audio_router.connect(digitakt.output("Track 8"), mf_101.input("Main L"))
 audio_router.connect(syntakt.output("Main LR"), mf_101.input("Main L"))
 
 audio_router.connect(mf_101.output("Main L"), time_factor.input("Main L"))
-audio_router.connect(time_factor.output("Main LR"), fireface.output("Main LR"))
 
+audio_router.connect(digitone.output("Main LR"), big_sky.input("Main L"))
+audio_router.connect(syntakt.output('Track 12'), big_sky.input("Main L"))
+
+audio_router.connect(syntakt.output('Track 11'), murf.input("Main L"))
+
+audio_router.connect(big_sky.output("Main LR"), fireface.output("Main LR"))
 audio_router.connect(digitakt.output("Main LR"), fireface.output("Main LR"))
+audio_router.connect(murf.output('Main LR'), fireface.output("Main LR"))
+audio_router.connect(time_factor.output("Main LR"), fireface.output("Main LR"))
 
 #
 # MIDI

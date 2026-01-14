@@ -95,7 +95,7 @@ class RaspberryPiAudioRouter(AbstractAudioRouter):
         input_instrument_name, input_port = input_info
         output_instrument_name, output_port = output_info
 
-        _logger.info(f"Connecting '{input_instrument_name}.{input_port.name} ({input_port.left})' to '{output_instrument_name}.{output_port.name} ({output_port.left})'...")
+        _logger.info(f"Connecting {input_instrument_name}.{input_port.name} -> {output_instrument_name}.{output_port.name} ({input_port.left} -> {output_port.left})")
 
         if input_port.is_stereo:
             if output_port.is_stereo:
