@@ -1,7 +1,7 @@
 from frangilive.audio.interface_connection_type import InterfaceConnectionType
 from frangilive.audio.jack_options import JackOptions
 from frangilive.audio.router.abstract import AbstractAudioRouter
-from frangilive.audio.typing import AudioDriver
+from frangilive.audio.driver import AudioDriver
 
 
 def make_audio_router(class_, interface_name: str, buffer_size: int, connection_type: InterfaceConnectionType, driver: AudioDriver) -> AbstractAudioRouter:

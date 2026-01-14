@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from frangilive.audio.interface_connection_type import InterfaceConnectionType
-from frangilive.audio.typing import AudioDriver
+from frangilive.audio.driver import AudioDriver
 
 
 @dataclass

@@ -15,11 +15,11 @@ class MockAudioRouter(AbstractAudioRouter):
         self._audio_interface = AudioInterface("MockAudio", "MockAudio")
 
     def find_audio_interface(self, name: str) -> bool:
-        _logger.info(f"Interface detection")
+        _logger.info(f"Interface detection for '{name}'")
         return True
 
     def start_jack_server(self, options: JackOptions):
-        _logger.info("JACK server")
+        _logger.info(f"JACK server: {options}")
 
     def start_overwitch(self):
         _logger.info("Overwitch")

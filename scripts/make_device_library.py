@@ -16,7 +16,7 @@ if __name__ == "__main__":
                 ]
             ),
             AudioInstrument(
-                name="Out",
+                name="Main LR",
                 inputs=[
                     AudioPort("Main LR", "system:playback_1", "system:playback_2"),
                 ]

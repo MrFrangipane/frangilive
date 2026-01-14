@@ -13,7 +13,7 @@
       ]
     },
     {
-      "name": "Out",
+      "name": "Main LR",
       "inputs": [
         {
           "name": "Main LR",

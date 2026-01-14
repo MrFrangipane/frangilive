@@ -1,11 +1,21 @@
+import sys
 import logging
 
 import mido
 
+from frangilive.audio.driver import AudioDriver
 from frangilive.audio.interface_connection_type import InterfaceConnectionType
-from frangilive.audio.router.raspberry_pi import RaspberryPiAudioRouter
 from frangilive.audio.router.router_factory import make_audio_router
 from frangilive.device.device_library import DeviceLibrary
+
+# FIXME use dependency injector ?
+if sys.platform == "linux":
+    from frangilive.audio.router.raspberry_pi import RaspberryPiAudioRouter
+    AudioRouter = RaspberryPiAudioRouter
+else:
+    from frangilive.audio.router.mock import MockAudioRouter
+    AudioRouter = MockAudioRouter
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,15 +33,15 @@ mf_101 = device_library.audio_instrument("MF-101")
 murf = device_library.audio_instrument("MuRF")
 time_factor = device_library.audio_instrument("Time Factor")
 
-main_out = device_library.audio_instrument("Out")
+main_out = device_library.audio_instrument("Main LR")
 
 #
 # AUDIO ROUTER
 audio_router = make_audio_router(
     buffer_size=128,
-    class_=RaspberryPiAudioRouter,  # FIXME use dependency injector ?
+    class_=AudioRouter,
     connection_type=InterfaceConnectionType.USB,
-    driver="alsa",
+    driver=AudioDriver.Alsa,
     interface_name="Fireface"
 )
 
@@ -47,10 +57,10 @@ audio_router.connect(syntakt.output('Track 12'), big_sky.input("Main L"))
 
 audio_router.connect(syntakt.output('Track 11'), murf.input("Main L"))
 
-audio_router.connect(big_sky.output("Main LR"), main_out.input("LR"))
-audio_router.connect(digitakt.output("Main LR"), main_out.input("LR"))
-audio_router.connect(murf.output('Main LR'), main_out.input("LR"))
-audio_router.connect(time_factor.output("Main LR"), main_out.input("LR"))
+audio_router.connect(big_sky.output("Main LR"), main_out.input("Main LR"))
+audio_router.connect(digitakt.output("Main LR"), main_out.input("Main LR"))
+audio_router.connect(murf.output('Main LR'), main_out.input("Main LR"))
+audio_router.connect(time_factor.output("Main LR"), main_out.input("Main LR"))
 
 #
 # MIDI

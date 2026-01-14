@@ -46,7 +46,7 @@ class RaspberryPiAudioRouter(AbstractAudioRouter):
 
         periods_per_buffer = 2 if options.interface_connection_type == InterfaceConnectionType.PCI else 3
 
-        subprocess.check_output(["jack_control", "ds", options.driver])
+        subprocess.check_output(["jack_control", "ds", options.driver.value])
         subprocess.check_output(["jack_control", "dps", "device", self._audio_interface.hardware_name])
         subprocess.check_output(["jack_control", "dps", "period", str(options.buffer_size)])
         subprocess.check_output(["jack_control", "dps", "nperiods", str(periods_per_buffer)])
