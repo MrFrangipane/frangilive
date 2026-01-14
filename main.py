@@ -20,13 +20,18 @@ audio_router = make_audio_router(
     interface_name="Fireface"
 )
 
-fireface = AudioInstrument(
-    name="Fireface",
-    inputs=[
-        AudioPort("Mic", "system:capture_1"),
-    ],
+
+microphone = AudioInstrument(
+    name="Microphone",
     outputs=[
-        AudioPort("Main LR", "system:playback_1", "system:playback_2"),
+        AudioPort("Mic", "system:capture_1"),
+    ]
+)
+
+main_out = AudioInstrument(
+    name="Main out",
+    inputs=[
+        AudioPort("LR", "system:playback_1", "system:playback_2"),
     ]
 )
 
@@ -125,10 +130,10 @@ audio_router.connect(syntakt.output('Track 12'), big_sky.input("Main L"))
 
 audio_router.connect(syntakt.output('Track 11'), murf.input("Main L"))
 
-audio_router.connect(big_sky.output("Main LR"), fireface.output("Main LR"))
-audio_router.connect(digitakt.output("Main LR"), fireface.output("Main LR"))
-audio_router.connect(murf.output('Main LR'), fireface.output("Main LR"))
-audio_router.connect(time_factor.output("Main LR"), fireface.output("Main LR"))
+audio_router.connect(big_sky.output("Main LR"), main_out.input("LR"))
+audio_router.connect(digitakt.output("Main LR"), main_out.input("LR"))
+audio_router.connect(murf.output('Main LR'), main_out.input("LR"))
+audio_router.connect(time_factor.output("Main LR"), main_out.input("LR"))
 
 #
 # MIDI
