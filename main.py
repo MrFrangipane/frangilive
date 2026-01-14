@@ -2,51 +2,80 @@ import logging
 
 import mido
 
-from frangilive.audiomidi.audio_port import AudioPort
-from frangilive.audiomidi.instrument import Instrument
-from frangilive.audiomidi.jack_options import JackOptions
-from frangilive.audiomidi.raspberry_pi import RaspberryPiAudioMidi
+from frangilive.audio.instrument import AudioInstrument
+from frangilive.audio.interface_connection_type import InterfaceConnectionType
+from frangilive.audio.port import AudioPort
+from frangilive.audio.router.raspberry_pi import RaspberryPiAudioRouter
+from frangilive.audio.router.router_factory import make_audio_router
 
 logging.basicConfig(level=logging.INFO)
 
-audio_midi = RaspberryPiAudioMidi()
-if not audio_midi.find_audio_interface(name="fireface"):
-    raise RuntimeError("No audio interface found")
+#
+# AUDIO
 
-audio_midi.start_jack_server(JackOptions(
-    buffer_period_count=3,
+audio_router = make_audio_router(
     buffer_size=128,
-    driver="alsa"
-))
-audio_midi.start_overwitch()
-audio_midi.activate_jack_client()
-audio_midi.remove_all_audio_connections()
+    class_=RaspberryPiAudioRouter,  # FIXME use dependency injector ?
+    connection_type=InterfaceConnectionType.USB,
+    driver="alsa",
+    interface_name="fireface"
+)
 
-
-fireface = Instrument(
+fireface = AudioInstrument(
     name="Fireface",
     inputs=[
         AudioPort("Mic", "system:capture_1"),
-        AudioPort("MF-101", "system:capture_2"),
     ],
     outputs=[
-        AudioPort("Main", "system:playback_1", "system:playback_2"),
-        AudioPort("MF-101", "system:playback_5"),
+        AudioPort("Main LR", "system:playback_1", "system:playback_2"),
     ]
 )
 
-digitakt = Instrument(
+mf_101 = AudioInstrument(
+    name="MF-101",
+    inputs=[
+        AudioPort("Main L", "system:playback_5"),
+    ],
+    outputs=[
+        AudioPort("Main L", "system:capture_2"),
+    ]
+)
+
+digitakt = AudioInstrument(
     name="Digitakt",
     outputs=[
-        AudioPort("Main", "Digitakt:Main L", "Digitakt:Main R"),
+        AudioPort("Main LR", "Digitakt:Main L", "Digitakt:Main R"),
         AudioPort("Track 8", "Digitakt:Track 8"),
     ]
 )
 
-audio_midi.connect(digitakt.output("Track 8"), fireface.output("MF-101"))
-audio_midi.connect(fireface.input("MF-101"), fireface.output("Main"))
+syntakt = AudioInstrument(
+    name="Syntakt",
+    outputs=[
+        AudioPort("Main LR", "Syntakt:Main L", "Syntakt:Main R"),
+    ]
+)
 
+time_factor = AudioInstrument(
+    name="Time Factor",
+    inputs=[
+        AudioPort("Main L", "system:playback_3")
+    ],
+    outputs=[
+        AudioPort("Main LR", "system:capture_7", "system:capture_8")
+    ]
+)
 
+audio_router.connect(digitakt.output("Track 8"), mf_101.input("Main L"))
+audio_router.connect(syntakt.output("Main LR"), mf_101.input("Main L"))
+
+audio_router.connect(mf_101.output("Main L"), time_factor.input("Main L"))
+audio_router.connect(time_factor.output("Main LR"), fireface.output("Main LR"))
+
+audio_router.connect(digitakt.output("Main LR"), fireface.output("Main LR"))
+
+#
+# MIDI
 print("Starting MIDI forwarding...")
 
 midi_inputs = mido.get_input_names()

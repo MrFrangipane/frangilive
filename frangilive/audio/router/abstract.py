@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 
-from frangilive.audiomidi.audio_port import AudioPort
-from frangilive.audiomidi.jack_options import JackOptions
+from frangilive.audio.jack_options import JackOptions
+from frangilive.audio.port import AudioPort
 
 
-class AbstractAudioMidi(ABC):
+class AbstractAudioRouter(ABC):
 
     @abstractmethod
     def find_audio_interface(self, name: str) -> bool:
@@ -27,5 +27,5 @@ class AbstractAudioMidi(ABC):
         pass
 
     @abstractmethod
-    def connect(self, input_port: AudioPort, output_port: AudioPort) -> None:
+    def connect(self, input_info: tuple[str, AudioPort], output_info: tuple[str, AudioPort]) -> None:
         pass

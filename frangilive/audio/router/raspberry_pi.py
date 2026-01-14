@@ -5,17 +5,18 @@ import time
 
 import jack
 
-from frangilive.audiomidi.abstract import AbstractAudioMidi
-from frangilive.audiomidi.audio_interface import AudioInterface
-from frangilive.audiomidi.instrument import AudioPort
-from frangilive.audiomidi.jack_options import JackOptions
+from frangilive.audio.audio_interface import AudioInterface
+from frangilive.audio.interface_connection_type import InterfaceConnectionType
+from frangilive.audio.jack_options import JackOptions
+from frangilive.audio.port import AudioPort
+from frangilive.audio.router.abstract import AbstractAudioRouter
 
 
 _logger = logging.getLogger(__name__)
 _RE = re.compile(r'card ([0-9]+)[^\[]+\[([^\]]+)')
 
 
-class RaspberryPiAudioMidi(AbstractAudioMidi):
+class RaspberryPiAudioRouter(AbstractAudioRouter):
 
     def __init__(self):
         self._jack_client: jack.Client | None = None
@@ -23,15 +24,15 @@ class RaspberryPiAudioMidi(AbstractAudioMidi):
 
     def find_audio_interface(self, name: str) -> bool:
         _logger.info(f"Detecting audio interface '{name}'...")
-        detected_number = ""
+
         output = subprocess.check_output(["aplay", "-l"]).decode()
+
         for result in _RE.findall(output):
             number_listed, name_listed = result
             if name.lower() in name_listed.lower():
-                detected_number = number_listed
                 detected_interface = AudioInterface(
                     name=name_listed,
-                    hardware_name=f"hw:{detected_number}"
+                    hardware_name=f"hw:{number_listed}"
                 )
                 _logger.info(f"Detected interface: {detected_interface}")
                 self._audio_interface = detected_interface
@@ -42,11 +43,15 @@ class RaspberryPiAudioMidi(AbstractAudioMidi):
 
     def start_jack_server(self, options: JackOptions):
         _logger.info("Starting JACK server...")
+
+        periods_per_buffer = 2 if options.interface_connection_type == InterfaceConnectionType.PCI else 3
+
         subprocess.check_output(["jack_control", "ds", options.driver])
         subprocess.check_output(["jack_control", "dps", "device", self._audio_interface.hardware_name])
         subprocess.check_output(["jack_control", "dps", "period", str(options.buffer_size)])
-        subprocess.check_output(["jack_control", "dps", "nperiods", str(options.buffer_period_count)])
+        subprocess.check_output(["jack_control", "dps", "nperiods", str(periods_per_buffer)])
         subprocess.check_output(["jack_control", "start"])
+
         _logger.info("JACK server started")
 
     def start_overwitch(self):
@@ -85,7 +90,13 @@ class RaspberryPiAudioMidi(AbstractAudioMidi):
         for port in self._jack_client.get_ports():
             disconnect_all(port.name)
 
-    def connect(self, input_port: AudioPort, output_port: AudioPort) -> None:
+    def connect(self, input_info: tuple[str, AudioPort], output_info: tuple[str, AudioPort]) -> None:
+        # TODO check input -> output order and fix it if necessary
+        input_instrument_name, input_port = input_info
+        output_instrument_name, output_port = output_info
+
+        _logger.info(f"Connecting '{input_instrument_name}.{input_port.name} ({input_port.left})' to '{output_instrument_name}.{output_port.name} ({output_port.left})'...")
+
         if input_port.is_stereo:
             if output_port.is_stereo:
                 self._jack_client.connect(input_port.left, output_port.left)
@@ -94,6 +105,8 @@ class RaspberryPiAudioMidi(AbstractAudioMidi):
                 self._jack_client.connect(input_port.left, output_port.left)
                 self._jack_client.connect(input_port.right, output_port.left)
         else:
-            self._jack_client.connect(input_port.left, output_port.left)
-
-        _logger.info(f"Connected '{input_port.name}' to '{output_port.name}'")
+            if output_port.is_stereo:
+                self._jack_client.connect(input_port.left, output_port.left)
+                self._jack_client.connect(input_port.left, output_port.right)
+            else:
+                self._jack_client.connect(input_port.left, output_port.left)

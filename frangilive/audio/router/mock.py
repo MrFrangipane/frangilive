@@ -1,5 +1,5 @@
-from frangilive.audiomidi.abstract import AbstractAudioMidi
-from frangilive.audiomidi.audio_interface import AudioInterface
+from frangilive.audio.abstract import AbstractAudioMidi
+from frangilive.audio.audio_interface import AudioInterface
 
 
 class MockAudioMidi(AbstractAudioMidi):
