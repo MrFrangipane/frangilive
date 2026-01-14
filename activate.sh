@@ -1,2 +1,2 @@
-source frangilive/bin/activate
+source ~/frangilive/bin/activate
 python

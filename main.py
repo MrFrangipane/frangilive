@@ -43,12 +43,32 @@ client.activate()
 
 client.inports.register('Syntakt:Main L')
 
-#print("JACK audio ports")
-#pp(client.get_ports(is_audio=True))
+# print("JACK audio ports")
+# pp(client.get_ports(is_audio=True))
 
-#print("JACK MIDI ports")
-#pp(client.get_ports(is_midi=True))
+# print("JACK MIDI ports")
+# pp(client.get_ports(is_midi=True))
 
+
+# Disconnect every single connection in the JACK server
+print("Disconnecting all JACK connections...")
+for port in client.get_ports():
+
+    def disconnect_all(port_name):
+        port = client.get_port_by_name(port_name)
+        for connected_port in client.get_all_connections(port):
+            try:
+                if port.is_output:
+                    client.disconnect(port_name, connected_port.name)
+                else:
+                    client.disconnect(connected_port.name, port_name)
+            except jack.JackError:
+                pass
+
+    disconnect_all(port.name)
+
+
+print("Connecting JACK ports...")
 try:
     client.connect('Digitone:Main L', 'system:playback_1')
     client.connect('Digitone:Main R', 'system:playback_2')
@@ -58,6 +78,18 @@ try:
 
     client.connect('Digitakt:Main L', 'system:playback_1')
     client.connect('Digitakt:Main R', 'system:playback_2')
+
+    # Digitakt track 8 to MuRF
+    client.connect('Digitakt:Track 8', 'system:playback_6')
+    client.connect('system:capture_3', 'system:playback_1')
+
+    # MuRF to Big Sky
+    client.connect('system:capture_3', 'system:playback_4')
+    client.connect('system:capture_4', 'system:playback_4')
+
+    # Big Sky to Main out
+    client.connect('system:capture_5', 'system:playback_1')
+    client.connect('system:capture_6', 'system:playback_2')
 
 except jack.JackError:
     raise IOError("Could not connect JACK ports. Are your synths powered on and connected ?")
