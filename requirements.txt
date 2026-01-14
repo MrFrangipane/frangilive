@@ -1,3 +1,4 @@
+dataclasses-json
 JACK-Client
 jack_server
 NumPy

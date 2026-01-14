@@ -1,0 +1,248 @@
+{
+  "name": "Frangilive",
+  "audio_instruments": [
+    {
+      "name": "Microphone",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Out",
+          "left": "system:capture_1",
+          "right": null
+        }
+      ]
+    },
+    {
+      "name": "Out",
+      "inputs": [
+        {
+          "name": "Main LR",
+          "left": "system:playback_1",
+          "right": "system:playback_2"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "name": "MF-101",
+      "inputs": [
+        {
+          "name": "Main L",
+          "left": "system:playback_5",
+          "right": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Main L",
+          "left": "system:capture_2",
+          "right": null
+        }
+      ]
+    },
+    {
+      "name": "MuRF",
+      "inputs": [
+        {
+          "name": "Main L",
+          "left": "system:playback_6",
+          "right": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Main LR",
+          "left": "system:capture_3",
+          "right": "system:capture_4"
+        }
+      ]
+    },
+    {
+      "name": "Digitakt",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Main LR",
+          "left": "Digitakt:Main L",
+          "right": "Digitakt:Main R"
+        },
+        {
+          "name": "Track 1",
+          "left": "Digitakt:Track 1",
+          "right": null
+        },
+        {
+          "name": "Track 2",
+          "left": "Digitakt:Track 2",
+          "right": null
+        },
+        {
+          "name": "Track 3",
+          "left": "Digitakt:Track 3",
+          "right": null
+        },
+        {
+          "name": "Track 4",
+          "left": "Digitakt:Track 4",
+          "right": null
+        },
+        {
+          "name": "Track 5",
+          "left": "Digitakt:Track 5",
+          "right": null
+        },
+        {
+          "name": "Track 6",
+          "left": "Digitakt:Track 6",
+          "right": null
+        },
+        {
+          "name": "Track 7",
+          "left": "Digitakt:Track 7",
+          "right": null
+        },
+        {
+          "name": "Track 8",
+          "left": "Digitakt:Track 8",
+          "right": null
+        }
+      ]
+    },
+    {
+      "name": "Syntakt",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Main LR",
+          "left": "Syntakt:Main L",
+          "right": "Syntakt:Main R"
+        },
+        {
+          "name": "Track 1",
+          "left": "Syntakt:Track 1",
+          "right": null
+        },
+        {
+          "name": "Track 2",
+          "left": "Syntakt:Track 2",
+          "right": null
+        },
+        {
+          "name": "Track 3",
+          "left": "Syntakt:Track 3",
+          "right": null
+        },
+        {
+          "name": "Track 4",
+          "left": "Syntakt:Track 4",
+          "right": null
+        },
+        {
+          "name": "Track 5",
+          "left": "Syntakt:Track 5",
+          "right": null
+        },
+        {
+          "name": "Track 6",
+          "left": "Syntakt:Track 6",
+          "right": null
+        },
+        {
+          "name": "Track 7",
+          "left": "Syntakt:Track 7",
+          "right": null
+        },
+        {
+          "name": "Track 8",
+          "left": "Syntakt:Track 8",
+          "right": null
+        },
+        {
+          "name": "Track 9",
+          "left": "Syntakt:Track 9",
+          "right": null
+        },
+        {
+          "name": "Track 10",
+          "left": "Syntakt:Track 10",
+          "right": null
+        },
+        {
+          "name": "Track 11",
+          "left": "Syntakt:Track 11",
+          "right": null
+        },
+        {
+          "name": "Track 12",
+          "left": "Syntakt:Track 12",
+          "right": null
+        }
+      ]
+    },
+    {
+      "name": "Digitone",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "Main LR",
+          "left": "Digitone:Main L",
+          "right": "Digitone:Main R"
+        },
+        {
+          "name": "Track 1",
+          "left": "Digitone:Track 1",
+          "right": null
+        },
+        {
+          "name": "Track 2",
+          "left": "Digitone:Track 2",
+          "right": null
+        },
+        {
+          "name": "Track 3",
+          "left": "Digitone:Track 3",
+          "right": null
+        },
+        {
+          "name": "Track 4",
+          "left": "Digitone:Track 4",
+          "right": null
+        }
+      ]
+    },
+    {
+      "name": "Time Factor",
+      "inputs": [
+        {
+          "name": "Main L",
+          "left": "system:playback_3",
+          "right": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Main LR",
+          "left": "system:capture_7",
+          "right": "system:capture_8"
+        }
+      ]
+    },
+    {
+      "name": "Big Sky",
+      "inputs": [
+        {
+          "name": "Main L",
+          "left": "system:playback_4",
+          "right": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Main LR",
+          "left": "system:capture_5",
+          "right": "system:capture_6"
+        }
+      ]
+    }
+  ]
+}

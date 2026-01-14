@@ -91,7 +91,7 @@ class RaspberryPiAudioRouter(AbstractAudioRouter):
             disconnect_all(port.name)
 
     def connect(self, input_info: tuple[str, AudioPort], output_info: tuple[str, AudioPort]) -> None:
-        # TODO check input -> output order and fix it if necessary
+        # TODO check input/output order and fix it if necessary ? Or catch and re raise Jack error ?
         input_instrument_name, input_port = input_info
         output_instrument_name, output_port = output_info
 
