@@ -142,8 +142,8 @@ class PatcherWidget(QWidget):
                     target_instrument=self._in_selected_instrument,
                     target_port=port_in_name
                 )
-                self._patcher.connect(connection_info)
-                self.connected.emit(connection_info)
+                if self._patcher.connect(connection_info):
+                    self.connected.emit(connection_info)
 
         self._update_cables()
 
@@ -156,8 +156,8 @@ class PatcherWidget(QWidget):
                         target_instrument=self._in_selected_instrument,
                         target_port=port_in_name
                     )
-                self._patcher.disconnect(connection_info)
-                self.disconnected.emit(connection_info)
+                if self._patcher.disconnect(connection_info):
+                    self.disconnected.emit(connection_info)
 
         self._update_cables()
 

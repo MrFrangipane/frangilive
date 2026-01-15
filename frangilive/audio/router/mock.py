@@ -3,8 +3,7 @@ import logging
 from frangilive.audio.audio_interface import AudioInterface
 from frangilive.audio.jack_options import JackOptions
 from frangilive.audio.router.abstract import AbstractAudioRouter
-from frangilive.instrument.audio_port import AudioPort
-
+from frangilive.patcher.audio_connection_info import AudioConnectionInfo
 
 _logger = logging.getLogger(__name__)
 
@@ -30,7 +29,8 @@ class MockAudioRouter(AbstractAudioRouter):
     def remove_all_audio_connections(self):
         _logger.info("Disconnecting all")
 
-    def connect(self, input_info: tuple[str, AudioPort], output_info: tuple[str, AudioPort]) -> None:
-        input_instrument_name, input_port = input_info
-        output_instrument_name, output_port = output_info
-        _logger.info(f"Connecting {input_instrument_name}.{input_port.name} -> {output_instrument_name}.{output_port.name} ({input_port.left} -> {output_port.left})")
+    def disconnect(self, info: AudioConnectionInfo) -> None:
+        _logger.info(f"Disconnecting {info.source_instrument}.{info.source_port} -> {info.target_instrument}.{info.target_port}")
+
+    def connect(self, info: AudioConnectionInfo) -> None:
+        _logger.info(f"Connecting {info.source_instrument}.{info.source_port} -> {info.target_instrument}.{info.target_port}")

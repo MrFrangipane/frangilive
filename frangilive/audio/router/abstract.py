@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from frangilive.audio.jack_options import JackOptions
-from frangilive.instrument.audio_port import AudioPort
+from frangilive.patcher.audio_connection_info import AudioConnectionInfo
 
 
 class AbstractAudioRouter(ABC):
@@ -27,5 +27,9 @@ class AbstractAudioRouter(ABC):
         pass
 
     @abstractmethod
-    def connect(self, input_info: tuple[str, AudioPort], output_info: tuple[str, AudioPort]) -> None:
+    def connect(self, info: AudioConnectionInfo) -> None:
+        pass
+
+    @abstractmethod
+    def disconnect(self, info: AudioConnectionInfo) -> None:
         pass

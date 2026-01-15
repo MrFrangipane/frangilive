@@ -40,7 +40,7 @@ class Patcher:
             if instrument.inputs:
                 self._instruments_with_input.append(instrument)
 
-    def connect(self, connection_info: AudioConnectionInfo):
+    def connect(self, connection_info: AudioConnectionInfo) -> bool:
         source_instrument = self.audio_instrument(connection_info.source_instrument)
         target_instrument = self.audio_instrument(connection_info.target_instrument)
         connection = AudioConnection(
@@ -51,8 +51,11 @@ class Patcher:
         )
         if connection not in self._connections:
             self._connections.append(connection)
+            return True
 
-    def disconnect(self, connection_info: AudioConnectionInfo):
+        return False
+
+    def disconnect(self, connection_info: AudioConnectionInfo) -> bool:
         source_instrument = self.audio_instrument(connection_info.source_instrument)
         target_instrument = self.audio_instrument(connection_info.target_instrument)
         connection = AudioConnection(
@@ -63,6 +66,9 @@ class Patcher:
         )
         if connection in self._connections:
             self._connections.remove(connection)
+            return True
+
+        return False
 
     def connections_for_instrument_out(self, instrument: AudioInstrument) -> list[AudioConnection]:
         return [connection for connection in self._connections if connection.source_instrument == instrument]
