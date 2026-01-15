@@ -24,6 +24,7 @@ logging.basicConfig(level=logging.INFO)
 
 #
 # DEVICES
+# FIXME create a DeviceLibraryStore class
 with open(files(resources).joinpath("devices.json"), "r") as f:
     device_library = DeviceLibrary.from_json(f.read())
 

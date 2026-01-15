@@ -7,6 +7,7 @@ from frangilive.device.device_library import DeviceLibrary
 
 
 if __name__ == "__main__":
+    # FIXME create a DeviceLibraryStore class
     output_file = files(resources).joinpath("devices.json")
 
     device_library = DeviceLibrary(

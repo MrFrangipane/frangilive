@@ -87,6 +87,7 @@ class Patcher(QWidget):
         self._in_buttons: dict[str, QPushButton] = {}
         self._out_buttons: dict[str, QPushButton] = {}
 
+        # FIXME create a DeviceLibraryStore class
         filepath = files(resources).joinpath("devices.json")
         self._device_library: DeviceLibrary = DeviceLibrary.from_json(open(filepath).read())
         self._instrument_count = len(self._device_library.audio_instruments)

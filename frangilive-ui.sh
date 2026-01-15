@@ -1,5 +1,6 @@
 (
   source ~/frangilive/bin/activate
-  pip install -r requirements.txt
+  # Only run this if you've actually changed dependencies
+  # pip install -r requirements.txt
   python -m frangilive.ui
 )
