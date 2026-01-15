@@ -1,3 +1,5 @@
+from importlib.metadata import files
+
 import logging
 import re
 import subprocess
@@ -5,11 +7,12 @@ import time
 
 import jack
 
+from frangilive import resources
 from frangilive.audio.audio_interface import AudioInterface
 from frangilive.audio.interface_connection_type import InterfaceConnectionType
 from frangilive.audio.jack_options import JackOptions
 from frangilive.audio.router.abstract import AbstractAudioRouter
-from frangilive.instrument.audio_port import AudioPort
+from frangilive.device.device_library import DeviceLibrary
 from frangilive.patcher.audio_connection_info import AudioConnectionInfo
 
 _logger = logging.getLogger(__name__)
@@ -21,6 +24,10 @@ class RaspberryPiAudioRouter(AbstractAudioRouter):
     def __init__(self):
         self._jack_client: jack.Client | None = None
         self._audio_interface: AudioInterface | None = None
+
+        # FIXME create a DeviceLibraryStore class
+        filepath = files(resources).joinpath("devices.json")
+        self._device_library: DeviceLibrary = DeviceLibrary.from_json(open(filepath).read())
 
     def find_audio_interface(self, name: str) -> bool:
         _logger.info(f"Detecting audio interface '{name}'...")
@@ -90,29 +97,38 @@ class RaspberryPiAudioRouter(AbstractAudioRouter):
         for port in self._jack_client.get_ports():
             disconnect_all(port.name)
 
-    def _connect(self, input_info: tuple[str, AudioPort], output_info: tuple[str, AudioPort]) -> None:
-        # TODO check input/output order and fix it if necessary ? Or catch and re raise Jack error ?
-        input_instrument_name, input_port = input_info
-        output_instrument_name, output_port = output_info
-
-        _logger.info(f"Connecting {input_instrument_name}.{input_port.name} -> {output_instrument_name}.{output_port.name} ({input_port.left} -> {output_port.left})")
-
-        if input_port.is_stereo:
-            if output_port.is_stereo:
-                self._jack_client.connect(input_port.left, output_port.left)
-                self._jack_client.connect(input_port.right, output_port.right)
-            else:
-                self._jack_client.connect(input_port.left, output_port.left)
-                self._jack_client.connect(input_port.right, output_port.left)
-        else:
-            if output_port.is_stereo:
-                self._jack_client.connect(input_port.left, output_port.left)
-                self._jack_client.connect(input_port.left, output_port.right)
-            else:
-                self._jack_client.connect(input_port.left, output_port.left)
-
     def connect(self, info: AudioConnectionInfo) -> None:
-        pass
+        source_port = self._device_library.audio_instrument(info.source_instrument).output(info.source_port)[1]
+        target_port = self._device_library.audio_instrument(info.target_instrument).input(info.target_port)[1]
+
+        if source_port.is_stereo:
+            if target_port.is_stereo:
+                self._jack_client.connect(source_port.left, target_port.left)
+                self._jack_client.connect(source_port.right, target_port.right)
+            else:
+                self._jack_client.connect(source_port.left, target_port.left)
+                self._jack_client.connect(source_port.right, target_port.left)
+        else:
+            if target_port.is_stereo:
+                self._jack_client.connect(source_port.left, target_port.left)
+                self._jack_client.connect(source_port.left, target_port.right)
+            else:
+                self._jack_client.connect(source_port.left, target_port.left)
 
     def disconnect(self, info: AudioConnectionInfo) -> None:
-        pass
+        source_port = self._device_library.audio_instrument(info.source_instrument).output(info.source_port)[1]
+        target_port = self._device_library.audio_instrument(info.target_instrument).input(info.target_port)[1]
+
+        if source_port.is_stereo:
+            if target_port.is_stereo:
+                self._jack_client.disconnect(source_port.left, target_port.left)
+                self._jack_client.disconnect(source_port.right, target_port.right)
+            else:
+                self._jack_client.disconnect(source_port.left, target_port.left)
+                self._jack_client.disconnect(source_port.right, target_port.left)
+        else:
+            if target_port.is_stereo:
+                self._jack_client.disconnect(source_port.left, target_port.left)
+                self._jack_client.disconnect(source_port.left, target_port.right)
+            else:
+                self._jack_client.disconnect(source_port.left, target_port.left)
