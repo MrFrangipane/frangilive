@@ -1,8 +1,11 @@
+from importlib.resources import files
+
 import sys
 import logging
 
 import mido
 
+from frangilive import resources
 from frangilive.audio.driver import AudioDriver
 from frangilive.audio.interface_connection_type import InterfaceConnectionType
 from frangilive.audio.router.router_factory import make_audio_router
@@ -21,7 +24,7 @@ logging.basicConfig(level=logging.INFO)
 
 #
 # DEVICES
-with open("../devices.json", "r") as f:
+with open(files(resources).joinpath("devices.json"), "r") as f:
     device_library = DeviceLibrary.from_json(f.read())
 
 digitakt = device_library.audio_instrument("Digitakt")

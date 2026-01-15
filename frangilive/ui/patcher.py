@@ -1,9 +1,12 @@
+from importlib.resources import files
+
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QWidget, QGridLayout, QPushButton, QSizePolicy
 
 from pyside6helpers.layout import clear
 
+from frangilive import resources
 from frangilive.device.device_library import DeviceLibrary
 
 
@@ -84,7 +87,8 @@ class Patcher(QWidget):
         self._in_buttons: dict[str, QPushButton] = {}
         self._out_buttons: dict[str, QPushButton] = {}
 
-        self._device_library: DeviceLibrary = DeviceLibrary.from_json(open("../../devices.json").read())
+        filepath = files(resources).joinpath("devices.json")
+        self._device_library: DeviceLibrary = DeviceLibrary.from_json(open(filepath).read())
         self._instrument_count = len(self._device_library.audio_instruments)
 
         layout = QGridLayout(self)

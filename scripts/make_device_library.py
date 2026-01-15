@@ -1,10 +1,13 @@
+from importlib.resources import files
+
+from frangilive import resources
 from frangilive.audio.instrument import AudioInstrument
 from frangilive.audio.port import AudioPort
 from frangilive.device.device_library import DeviceLibrary
 
 
 if __name__ == "__main__":
-    output_file = "../devices.json"
+    output_file = files(resources).joinpath("devices.json")
 
     device_library = DeviceLibrary(
         name="Frangilive",
