@@ -1,4 +1,4 @@
-from importlib.metadata import files
+from importlib.resources import files, as_file
 
 import logging
 import re
@@ -26,8 +26,10 @@ class RaspberryPiAudioRouter(AbstractAudioRouter):
         self._audio_interface: AudioInterface | None = None
 
         # FIXME create a DeviceLibraryStore class
-        filepath = files(resources).joinpath("devices.json")
-        self._device_library: DeviceLibrary = DeviceLibrary.from_json(open(filepath).read())
+        resource_path = files("frangilive.resources").joinpath("devices.json")
+        with as_file(resource_path) as p:
+            with open(p, "r") as f:
+                self._device_library: DeviceLibrary = DeviceLibrary.from_json(f.read())
 
     def find_audio_interface(self, name: str) -> bool:
         _logger.info(f"Detecting audio interface '{name}'...")

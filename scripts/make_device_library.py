@@ -1,15 +1,11 @@
-from importlib.resources import files
+from importlib.resources import files, as_file
 
-from frangilive import resources
-from frangilive.audio.instrument import AudioInstrument
-from frangilive.audio.port import AudioPort
+from frangilive.instrument.audio import AudioInstrument
+from frangilive.instrument.audio_port import AudioPort
 from frangilive.device.device_library import DeviceLibrary
 
 
 if __name__ == "__main__":
-    # FIXME create a DeviceLibraryStore class
-    output_file = files(resources).joinpath("devices.json")
-
     device_library = DeviceLibrary(
         name="Frangilive",
         audio_instruments=[
@@ -106,10 +102,12 @@ if __name__ == "__main__":
         ]
     )
 
+    # FIXME create a DeviceLibraryStore class
+    resource_path = files("frangilive.resources").joinpath("devices.json")
+    with as_file(resource_path) as p:
+        with open(p, "w") as f:
+            f.write(device_library.to_json(indent=2))
 
-    with open(output_file, "w") as f:
-        f.write(device_library.to_json(indent=2))
-
-    with open(output_file, "r") as f:
-        d = DeviceLibrary.from_json(f.read())
-        assert d == device_library
+        with open(p, "r") as f:
+            d = DeviceLibrary.from_json(f.read())
+            assert d == device_library

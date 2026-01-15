@@ -1,6 +1,5 @@
-from importlib.resources import files
+from importlib.resources import files, as_file
 
-from frangilive import resources
 from frangilive.device.device_library import DeviceLibrary
 from frangilive.instrument.audio import AudioInstrument
 from frangilive.patcher.audio_connection import AudioConnection
@@ -16,8 +15,11 @@ class Patcher:
         self._connections: list[AudioConnection] = []
 
         # FIXME create a DeviceLibraryStore class
-        filepath = files(resources).joinpath("devices.json")
-        self._device_library: DeviceLibrary = DeviceLibrary.from_json(open(filepath).read())
+        resource_path = files("frangilive.resources").joinpath("devices.json")
+        with as_file(resource_path) as p:
+            with open(p, "r") as f:
+                self._device_library = DeviceLibrary.from_json(f.read())
+
         self.set_audio_instruments(self._device_library.audio_instruments)
 
     def audio_instrument(self, name: str) -> AudioInstrument | None:

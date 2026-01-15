@@ -1,11 +1,10 @@
-from importlib.resources import files
+from importlib.resources import files, as_file
 
 import sys
 import logging
 
 import mido
 
-from frangilive import resources
 from frangilive.audio.driver import AudioDriver
 from frangilive.audio.interface_connection_type import InterfaceConnectionType
 from frangilive.audio.router.router_factory import make_audio_router
@@ -26,8 +25,10 @@ logging.basicConfig(level=logging.INFO)
 #
 # DEVICES
 # FIXME create a DeviceLibraryStore class
-with open(files(resources).joinpath("devices.json"), "r") as f:
-    device_library = DeviceLibrary.from_json(f.read())
+resource_path = files("frangilive.resources").joinpath("devices.json")
+with as_file(resource_path) as p:
+    with open(p, "r") as f:
+        device_library = DeviceLibrary.from_json(f.read())
 
 digitakt = device_library.audio_instrument("Digitakt")
 digitone = device_library.audio_instrument("Digitone")
