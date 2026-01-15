@@ -10,6 +10,7 @@ from frangilive.audio.driver import AudioDriver
 from frangilive.audio.interface_connection_type import InterfaceConnectionType
 from frangilive.audio.router.router_factory import make_audio_router
 from frangilive.device.device_library import DeviceLibrary
+from frangilive.patcher.audio_connection_info import AudioConnectionInfo
 
 # FIXME use dependency injector ?
 if sys.platform == "linux":
@@ -51,20 +52,20 @@ audio_router = make_audio_router(
 
 #
 # DEMO PATCH
-audio_router.connect(digitakt.output("Track 8"), mf_101.input("Main L"))
-audio_router.connect(syntakt.output("Main LR"), mf_101.input("Main L"))
+audio_router.connect(AudioConnectionInfo("Digitakt", "Track 8", "MF-101", "Main L"))
+audio_router.connect(AudioConnectionInfo("Syntakt", "Main LR", "MF-101", "Main L"))
 
-audio_router.connect(mf_101.output("Main L"), time_factor.input("Main L"))
+audio_router.connect(AudioConnectionInfo("MF-101", "Main L", "Time Factor", "Main L"))
 
-audio_router.connect(digitone.output("Main LR"), big_sky.input("Main L"))
-audio_router.connect(syntakt.output('Track 12'), big_sky.input("Main L"))
+audio_router.connect(AudioConnectionInfo("Digitone", "Main LR", "Big Sky", "Main L"))
+audio_router.connect(AudioConnectionInfo("Syntakt", 'Track 12', "Big Sky", "Main L"))
 
-audio_router.connect(syntakt.output('Track 11'), murf.input("Main L"))
+audio_router.connect(AudioConnectionInfo("Syntakt", 'Track 11', "MuRF", "Main L"))
 
-audio_router.connect(big_sky.output("Main LR"), main_out.input("Main LR"))
-audio_router.connect(digitakt.output("Main LR"), main_out.input("Main LR"))
-audio_router.connect(murf.output('Main LR'), main_out.input("Main LR"))
-audio_router.connect(time_factor.output("Main LR"), main_out.input("Main LR"))
+audio_router.connect(AudioConnectionInfo("Big Sky", "Main LR", "Main LR", "Main LR"))
+audio_router.connect(AudioConnectionInfo("Digitakt", "Main LR", "Main LR", "Main LR"))
+audio_router.connect(AudioConnectionInfo("MuRF", "Main LR", "Main LR", "Main LR"))
+audio_router.connect(AudioConnectionInfo("Time Factor", "Main LR", "Main LR", "Main LR"))
 
 #
 # MIDI
