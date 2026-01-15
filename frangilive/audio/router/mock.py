@@ -2,8 +2,8 @@ import logging
 
 from frangilive.audio.audio_interface import AudioInterface
 from frangilive.audio.jack_options import JackOptions
-from frangilive.audio.port import AudioPort
 from frangilive.audio.router.abstract import AbstractAudioRouter
+from frangilive.instrument.audio_port import AudioPort
 
 
 _logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from dataclasses_json import dataclass_json
 
-from frangilive.audio.instrument import AudioInstrument
+from frangilive.instrument.audio import AudioInstrument
 
 
 @dataclass_json

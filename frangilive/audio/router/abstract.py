@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from frangilive.audio.jack_options import JackOptions
-from frangilive.audio.port import AudioPort
+from frangilive.instrument.audio_port import AudioPort
 
 
 class AbstractAudioRouter(ABC):

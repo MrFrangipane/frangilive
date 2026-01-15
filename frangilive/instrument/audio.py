@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from frangilive.audio.port import AudioPort
+from frangilive.instrument.audio_port import AudioPort
 
 
 @dataclass

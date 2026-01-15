@@ -11,7 +11,7 @@ else:
     from frangilive.audio.router.mock import MockAudioRouter
     AudioRouter = MockAudioRouter
 
-from frangilive.ui.patcher import Patcher
+from frangilive.ui.patcher.patcher import PatcherWidget
 
 
 if __name__ == "__main__":
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     css.load_onto(app)
 
     window = MainWindow()
-    window.setCentralWidget(Patcher())
+    window.setCentralWidget(PatcherWidget())
     window.show()
 
     sys.exit(app.exec())
