@@ -8,9 +8,9 @@ import jack
 from frangilive.audio.audio_interface import AudioInterface
 from frangilive.audio.interface_connection_type import InterfaceConnectionType
 from frangilive.audio.jack_options import JackOptions
-from frangilive.audio.port import AudioPort
 from frangilive.audio.router.abstract import AbstractAudioRouter
-
+from frangilive.instrument.audio_port import AudioPort
+from frangilive.patcher.audio_connection_info import AudioConnectionInfo
 
 _logger = logging.getLogger(__name__)
 _RE = re.compile(r'card ([0-9]+)[^\[]+\[([^\]]+)')
@@ -90,7 +90,7 @@ class RaspberryPiAudioRouter(AbstractAudioRouter):
         for port in self._jack_client.get_ports():
             disconnect_all(port.name)
 
-    def connect(self, input_info: tuple[str, AudioPort], output_info: tuple[str, AudioPort]) -> None:
+    def _connect(self, input_info: tuple[str, AudioPort], output_info: tuple[str, AudioPort]) -> None:
         # TODO check input/output order and fix it if necessary ? Or catch and re raise Jack error ?
         input_instrument_name, input_port = input_info
         output_instrument_name, output_port = output_info
@@ -110,3 +110,9 @@ class RaspberryPiAudioRouter(AbstractAudioRouter):
                 self._jack_client.connect(input_port.left, output_port.right)
             else:
                 self._jack_client.connect(input_port.left, output_port.left)
+
+    def connect(self, info: AudioConnectionInfo) -> None:
+        pass
+
+    def disconnect(self, info: AudioConnectionInfo) -> None:
+        pass
