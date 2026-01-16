@@ -10,11 +10,11 @@ from frangilive.midi.infrastructure.mido_midi_gateway import MidoMidiGateway
 from frangilive.app import FrangiliveApp
 
 if sys.platform == "linux":
-    from frangilive.audio.infrastructure.jack_audio_router import JackAudioRouter
-    audio_impl = JackAudioRouter()
+    from frangilive.audio.infrastructure.jack_audio_system import JackAudioSystem
+    audio_impl = JackAudioSystem()
 else:
-    from frangilive.audio.infrastructure.mock_audio_router import MockAudioRouter
-    audio_impl = MockAudioRouter()
+    from frangilive.audio.infrastructure.mock_audio_system import MockAudioSystem
+    audio_impl = MockAudioSystem()
 
 from frangilive.ui.patcher.patcher import PatcherWidget
 

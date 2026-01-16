@@ -15,7 +15,7 @@ _logger = logging.getLogger(__name__)
 _RE = re.compile(r'card ([0-9]+)[^\[]+\[([^\]]+)')
 
 
-class JackAudioRouter(AudioRouterGateway, AudioEngineGateway):
+class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
     def __init__(self):
         self._jack_client: jack.Client | None = None if jack else None
         self._hardware_name: str | None = None
@@ -25,7 +25,7 @@ class JackAudioRouter(AudioRouterGateway, AudioEngineGateway):
         if jack is None:
             raise ImportError("jack-client package is required for JackAudioRouter")
 
-        # Find hardware name
+        # Find the hardware name
         _logger.info(f"Detecting audio interface '{interface_name}'...")
         try:
             output = subprocess.check_output(["aplay", "-l"]).decode()

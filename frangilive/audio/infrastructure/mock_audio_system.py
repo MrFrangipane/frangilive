@@ -1,11 +1,12 @@
 import logging
+
 from frangilive.audio.interfaces.audio_router import AudioRouterGateway
 from frangilive.audio.interfaces.audio_engine import AudioEngineGateway
 
 _logger = logging.getLogger(__name__)
 
 
-class MockAudioRouter(AudioRouterGateway, AudioEngineGateway):
+class MockAudioSystem(AudioRouterGateway, AudioEngineGateway):
     def __init__(self):
         self._running = False
 
