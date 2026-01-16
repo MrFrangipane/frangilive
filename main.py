@@ -1,114 +1,63 @@
-from importlib.resources import files, as_file
-
 import sys
 import logging
+from frangilive.infrastructure.persistence.json_device_repository import JsonDeviceRepository
+from frangilive.infrastructure.midi.mido_midi_gateway import MidoMidiGateway
+from frangilive.application.app import FrangiliveApp
 
-import mido
-
-from frangilive.audio.driver import AudioDriver
-from frangilive.audio.interface_connection_type import InterfaceConnectionType
-from frangilive.audio.router.router_factory import make_audio_router
-from frangilive.device.device_library import DeviceLibrary
-from frangilive.patcher.audio_connection_info import AudioConnectionInfo
-
-# FIXME use dependency injector ?
 if sys.platform == "linux":
-    from frangilive.audio.router.raspberry_pi import RaspberryPiAudioRouter
-    AudioRouter = RaspberryPiAudioRouter
+    from frangilive.infrastructure.audio.jack_audio_router import JackAudioRouter
+    audio_impl = JackAudioRouter()
 else:
-    from frangilive.audio.router.mock import MockAudioRouter
-    AudioRouter = MockAudioRouter
-
+    from frangilive.infrastructure.audio.mock_audio_router import MockAudioRouter
+    audio_impl = MockAudioRouter()
 
 logging.basicConfig(level=logging.INFO)
 
-#
-# DEVICES
-# FIXME create a DeviceLibraryStore class
-resource_path = files("frangilive.resources").joinpath("devices.json")
-with as_file(resource_path) as p:
-    with open(p, "r") as f:
-        device_library = DeviceLibrary.from_json(f.read())
-
-digitakt = device_library.audio_instrument("Digitakt")
-digitone = device_library.audio_instrument("Digitone")
-syntakt = device_library.audio_instrument("Syntakt")
-
-big_sky = device_library.audio_instrument("Big Sky")
-mf_101 = device_library.audio_instrument("MF-101")
-murf = device_library.audio_instrument("MuRF")
-time_factor = device_library.audio_instrument("Time Factor")
-
-main_out = device_library.audio_instrument("Main LR")
+app = FrangiliveApp(
+    device_repo=JsonDeviceRepository(),
+    audio_router=audio_impl,
+    audio_engine=audio_impl,
+    midi_gateway=MidoMidiGateway()
+)
 
 #
-# AUDIO ROUTER
-audio_router = make_audio_router(
+# AUDIO ENGINE
+#
+app.manage_engine.start_engine(
+    interface_name="Fireface",
     buffer_size=128,
-    class_=AudioRouter,
-    connection_type=InterfaceConnectionType.USB,
-    driver=AudioDriver.Alsa,
-    interface_name="Fireface"
+    driver="alsa",
+    connection_type="USB"
 )
 
 #
 # DEMO PATCH
-audio_router.connect(AudioConnectionInfo("Digitakt", "Track 8", "MF-101", "Main L"))
-audio_router.connect(AudioConnectionInfo("Syntakt", "Main LR", "MF-101", "Main L"))
+#
+app.connect("Digitakt", "Track 8", "MF-101", "Main L")
+app.connect("Syntakt", "Main LR", "MF-101", "Main L")
 
-audio_router.connect(AudioConnectionInfo("MF-101", "Main L", "Time Factor", "Main L"))
+app.connect("MF-101", "Main L", "Time Factor", "Main L")
 
-audio_router.connect(AudioConnectionInfo("Digitone", "Main LR", "Big Sky", "Main L"))
-audio_router.connect(AudioConnectionInfo("Syntakt", 'Track 12', "Big Sky", "Main L"))
+app.connect("Digitone", "Main LR", "Big Sky", "Main L")
+app.connect("Syntakt", 'Track 12', "Big Sky", "Main L")
 
-audio_router.connect(AudioConnectionInfo("Syntakt", 'Track 11', "MuRF", "Main L"))
+app.connect("Syntakt", 'Track 11', "MuRF", "Main L")
 
-audio_router.connect(AudioConnectionInfo("Big Sky", "Main LR", "Main LR", "Main LR"))
-audio_router.connect(AudioConnectionInfo("Digitakt", "Main LR", "Main LR", "Main LR"))
-audio_router.connect(AudioConnectionInfo("MuRF", "Main LR", "Main LR", "Main LR"))
-audio_router.connect(AudioConnectionInfo("Time Factor", "Main LR", "Main LR", "Main LR"))
+app.connect("Big Sky", "Main LR", "Main LR", "Main LR")
+app.connect("Digitakt", "Main LR", "Main LR", "Main LR")
+app.connect("MuRF", "Main LR", "Main LR", "Main LR")
+app.connect("Time Factor", "Main LR", "Main LR", "Main LR")
 
 #
 # MIDI
+#
 print("Starting MIDI forwarding...")
-
-midi_inputs = mido.get_input_names()
-midi_outputs = mido.get_output_names()
-
-#print("Available input ports:")
-#print("\n".join(midi_inputs))
-#print("")
-#print("Available output ports:")
-#print("\n".join(midi_outputs))
-#print("")
-
-def find_name(name_prefix: str, names: list[str]):
-    for name in names:
-        if name.startswith(name_prefix):
-            return name
-    raise ValueError(f"No port name starting with '{name_prefix}' found.")
-
-
-midi_digitakt = mido.open_input(find_name("Elektron Digitakt:Elektron Digitakt MIDI", midi_inputs))
-midi_syntakt = mido.open_output(find_name("Elektron Syntakt:Elektron Syntakt MIDI", midi_outputs))
-midi_digitone = mido.open_output(find_name("Elektron Digitone:Elektron Digitone MIDI", midi_outputs))
-
-
-def forward_midi():
-    try:
-        while True:
-            msg = midi_digitakt.receive()
-            midi_syntakt.send(msg)
-            midi_digitone.send(msg)
-
-    except KeyboardInterrupt:
-        print('Exiting')
-
-    finally:
-        midi_digitakt.close()
-        midi_syntakt.close()
-        midi_digitone.close()
-
-
 print("Press Ctrl-C to exit")
-forward_midi()
+
+app.forward_midi.execute(
+    input_prefix="Elektron Digitakt:Elektron Digitakt MIDI",
+    output_prefixes=[
+        "Elektron Syntakt:Elektron Syntakt MIDI",
+        "Elektron Digitone:Elektron Digitone MIDI"
+    ]
+)

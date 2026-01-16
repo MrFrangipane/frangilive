@@ -1,10 +1,9 @@
 from dataclasses import dataclass
+from .audio_instrument import AudioInstrument
+from .audio_port import AudioPort
 
-from frangilive.instrument.audio import AudioInstrument
-from frangilive.instrument.audio_port import AudioPort
 
-
-@dataclass
+@dataclass(frozen=True)
 class AudioConnection:
     source_instrument: AudioInstrument
     source_port: AudioPort
