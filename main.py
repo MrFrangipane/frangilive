@@ -1,14 +1,14 @@
 import sys
 import logging
-from frangilive.infrastructure.persistence.json_device_repository import JsonDeviceRepository
-from frangilive.infrastructure.midi.mido_midi_gateway import MidoMidiGateway
-from frangilive.application.app import FrangiliveApp
+from frangilive.devices.infrastructure.json_device_repository import JsonDeviceRepository
+from frangilive.midi.infrastructure.mido_midi_gateway import MidoMidiGateway
+from frangilive.app import FrangiliveApp
 
 if sys.platform == "linux":
-    from frangilive.infrastructure.audio.jack_audio_router import JackAudioRouter
+    from frangilive.audio.infrastructure.jack_audio_router import JackAudioRouter
     audio_impl = JackAudioRouter()
 else:
-    from frangilive.infrastructure.audio.mock_audio_router import MockAudioRouter
+    from frangilive.audio.infrastructure.mock_audio_router import MockAudioRouter
     audio_impl = MockAudioRouter()
 
 logging.basicConfig(level=logging.INFO)

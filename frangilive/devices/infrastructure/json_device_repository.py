@@ -1,9 +1,9 @@
 import json
 from importlib.resources import files, as_file
-from frangilive.domain.models.audio_port import AudioPort
-from frangilive.domain.models.audio_instrument import AudioInstrument
-from frangilive.domain.models.device_library import DeviceLibrary
-from frangilive.interfaces.repositories.device_repository import DeviceRepository
+from frangilive.devices.domain.audio_port import AudioPort
+from frangilive.devices.domain.audio_instrument import AudioInstrument
+from frangilive.devices.domain.device_library import DeviceLibrary
+from frangilive.devices.interfaces.device_repository import DeviceRepository
 
 
 class JsonDeviceRepository(DeviceRepository):

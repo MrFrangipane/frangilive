@@ -1,12 +1,12 @@
-from frangilive.domain.models.patcher import Patcher
-from frangilive.interfaces.repositories.device_repository import DeviceRepository
-from frangilive.interfaces.gateways.audio_router import AudioRouterGateway
-from frangilive.interfaces.gateways.audio_engine import AudioEngineGateway
-from frangilive.interfaces.gateways.midi import MidiGateway
+from frangilive.patcher.domain.patcher import Patcher
+from frangilive.devices.interfaces.device_repository import DeviceRepository
+from frangilive.audio.interfaces.audio_router import AudioRouterGateway
+from frangilive.audio.interfaces.audio_engine import AudioEngineGateway
+from frangilive.midi.interfaces.midi import MidiGateway
 
-from frangilive.application.use_cases.manage_connections import ManageConnectionsUseCase
-from frangilive.application.use_cases.manage_audio_engine import ManageAudioEngineUseCase
-from frangilive.application.use_cases.forward_midi import ForwardMidiUseCase
+from frangilive.patcher.application.manage_connections import ManageConnectionsUseCase
+from frangilive.audio.application.manage_audio_engine import ManageAudioEngineUseCase
+from frangilive.midi.application.forward_midi import ForwardMidiUseCase
 
 
 class FrangiliveApp:
