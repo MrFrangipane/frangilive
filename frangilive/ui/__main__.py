@@ -2,20 +2,19 @@ import logging
 import sys
 
 from PySide6.QtWidgets import QApplication
-
 from pyside6helpers.main_window import MainWindow
 from pyside6helpers import css
 
-from frangilive.audio.driver import AudioDriver
-from frangilive.audio.interface_connection_type import InterfaceConnectionType
-from frangilive.audio.router.router_factory import make_audio_router
+from frangilive.infrastructure.persistence.json_device_repository import JsonDeviceRepository
+from frangilive.infrastructure.midi.mido_midi_gateway import MidoMidiGateway
+from frangilive.application.app import FrangiliveApp
 
 if sys.platform == "linux":
-    from frangilive.audio.router.raspberry_pi import RaspberryPiAudioRouter
-    AudioRouter = RaspberryPiAudioRouter
+    from frangilive.infrastructure.audio.jack_audio_router import JackAudioRouter
+    audio_impl = JackAudioRouter()
 else:
-    from frangilive.audio.router.mock import MockAudioRouter
-    AudioRouter = MockAudioRouter
+    from frangilive.infrastructure.audio.mock_audio_router import MockAudioRouter
+    audio_impl = MockAudioRouter()
 
 from frangilive.ui.patcher.patcher import PatcherWidget
 
@@ -24,12 +23,19 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     #
-    # Actual Audio
-    audio_router = make_audio_router(
+    # App
+    frangilive_app = FrangiliveApp(
+        device_repo=JsonDeviceRepository(),
+        audio_router=audio_impl,
+        audio_engine=audio_impl,
+        midi_gateway=MidoMidiGateway()
+    )
+
+    # Start audio engine
+    frangilive_app.manage_engine.start_engine(
         buffer_size=128,
-        class_=AudioRouter,
-        connection_type=InterfaceConnectionType.USB,
-        driver=AudioDriver.Alsa,
+        connection_type="USB",
+        driver="alsa",
         interface_name="Fireface"
     )
 
@@ -40,9 +46,7 @@ if __name__ == "__main__":
     app.setOrganizationName("Frangitron")
     css.load_onto(app)
 
-    patcher_widget = PatcherWidget()
-    patcher_widget.connected.connect(audio_router.connect)
-    patcher_widget.disconnected.connect(audio_router.disconnect)
+    patcher_widget = PatcherWidget(app=frangilive_app)
 
     window = MainWindow()
     window.setCentralWidget(patcher_widget)
