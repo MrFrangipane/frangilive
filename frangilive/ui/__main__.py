@@ -11,10 +11,10 @@ from frangilive.app import FrangiliveApp
 
 if sys.platform == "linux":
     from frangilive.audio.infrastructure.jack_audio_system import JackAudioSystem
-    audio_impl = JackAudioSystem()
+    audio_system = JackAudioSystem()
 else:
     from frangilive.audio.infrastructure.mock_audio_system import MockAudioSystem
-    audio_impl = MockAudioSystem()
+    audio_system = MockAudioSystem()
 
 from frangilive.ui.patcher.patcher import PatcherWidget
 
@@ -26,18 +26,19 @@ if __name__ == "__main__":
     # App
     frangilive_app = FrangiliveApp(
         device_repo=JsonDeviceRepository(),
-        audio_router=audio_impl,
-        audio_engine=audio_impl,
+        audio_router=audio_system,
+        audio_engine=audio_system,
         midi_gateway=MidoMidiGateway()
     )
 
-    # Start audio engine
+    # Start the audio engine
     frangilive_app.manage_engine.start_engine(
         buffer_size=128,
         connection_type="USB",
         driver="alsa",
         interface_name="Fireface"
     )
+    frangilive_app.manage_connections.clear_all_connections()
 
     #
     # Ui

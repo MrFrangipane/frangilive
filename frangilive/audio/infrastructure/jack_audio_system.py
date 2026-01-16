@@ -20,8 +20,7 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
         self._jack_client: jack.Client | None = None if jack else None
         self._hardware_name: str | None = None
 
-    def start(self, interface_name: str = "Fireface", buffer_size: int = 128, driver: str = "alsa",
-              connection_type: str = "USB", **kwargs) -> None:
+    def start(self, interface_name: str = "Fireface", buffer_size: int = 128, driver: str = "alsa", connection_type: str = "USB") -> None:
         if jack is None:
             raise ImportError("jack-client package is required for JackAudioRouter")
 
@@ -55,13 +54,12 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
             raise
 
         # Overwitch
-        if kwargs.get("start_overwitch"):
-            _logger.info("Starting Overwitch...")
-            try:
-                subprocess.check_output(["systemctl", "--user", "restart", "overwitch"])
-                time.sleep(1)
-            except Exception as e:
-                _logger.warning(f"Failed to start overwitch: {e}")
+        _logger.info("Starting Overwitch...")
+        try:
+            subprocess.check_output(["systemctl", "--user", "restart", "overwitch"])
+            time.sleep(1)
+        except Exception as e:
+            _logger.warning(f"Failed to start overwitch: {e}")
 
         # Activate client
         self._jack_client = jack.Client("Frangilive")
