@@ -8,8 +8,8 @@ try:
 except ImportError:
     jack = None
 
-from frangilive.interfaces.gateways.audio_router import AudioRouterGateway
-from frangilive.interfaces.gateways.audio_engine import AudioEngineGateway
+from frangilive.audio.interfaces.audio_router import AudioRouterGateway
+from frangilive.audio.interfaces.audio_engine import AudioEngineGateway
 
 _logger = logging.getLogger(__name__)
 _RE = re.compile(r'card ([0-9]+)[^\[]+\[([^\]]+)')

@@ -1,5 +1,5 @@
 import logging
-from frangilive.interfaces.gateways.midi import MidiGateway
+from frangilive.midi.interfaces.midi import MidiGateway
 
 _logger = logging.getLogger(__name__)
 

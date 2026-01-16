@@ -1,4 +1,4 @@
-from frangilive.interfaces.gateways.audio_engine import AudioEngineGateway
+from frangilive.audio.interfaces.audio_engine import AudioEngineGateway
 
 
 class ManageAudioEngineUseCase:

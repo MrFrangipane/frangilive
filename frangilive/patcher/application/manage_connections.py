@@ -1,7 +1,7 @@
-from frangilive.domain.models.audio_port import AudioPort
-from frangilive.domain.models.audio_connection import AudioConnection
-from frangilive.domain.models.patcher import Patcher
-from frangilive.interfaces.gateways.audio_router import AudioRouterGateway
+from frangilive.devices.domain.audio_port import AudioPort
+from frangilive.patcher.domain.audio_connection import AudioConnection
+from frangilive.patcher.domain.patcher import Patcher
+from frangilive.audio.interfaces.audio_router import AudioRouterGateway
 
 
 class ManageConnectionsUseCase:

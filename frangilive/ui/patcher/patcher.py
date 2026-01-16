@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QWidget, QGridLayout, QPushButton
 
-from frangilive.application.app import FrangiliveApp
+from frangilive.app import FrangiliveApp
 from frangilive.ui.patcher.cables import CablesWidget
 from frangilive.ui.patcher.make_button import make_button
 from frangilive.ui.patcher.ports import PortsWidget

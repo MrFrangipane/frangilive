@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from .audio_connection import AudioConnection
-from .device_library import DeviceLibrary
+from frangilive.devices.domain.device_library import DeviceLibrary
 
 
 @dataclass

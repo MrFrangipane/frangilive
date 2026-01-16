@@ -1,5 +1,5 @@
 import mido
-from frangilive.interfaces.gateways.midi import MidiGateway
+from frangilive.midi.interfaces.midi import MidiGateway
 
 
 class MidoMidiGateway(MidiGateway):
