@@ -1,14 +1,16 @@
 from PySide6.QtWidgets import QPushButton, QSizePolicy
 
+from pyside6helpers.confirm_button import ConfirmButton
 
-def make_button(text: str, checkable=True, color=None):
-    button = QPushButton(text)
 
-    stylesheet = "QPushButton:enabled {font-size: 12pt; font-weight: bold;"
+def make_button(text: str, checkable=True, confirm=False, color=None):
+    if confirm:
+        button = ConfirmButton(text)
+    else:
+        button = QPushButton(text)
+
     if color is not None:
-        stylesheet += f"background-color: {color};"
-    stylesheet += "}"
-    button.setStyleSheet(stylesheet)
+        button.setStyleSheet(f"background-color: {color};")
 
     button.setMinimumWidth(120)
     button.setCheckable(checkable)

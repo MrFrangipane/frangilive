@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "frangilive"
+version = "0.1.0"
+description = "Frangilive"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dataclasses-json",
+    "mido",
+    "numpy",
+    "PySide6",
+    "pyside6-helpers",
+    "python-helpers",
+    "JACK-Client; sys_platform == 'linux'",
+    "jack_server; sys_platform == 'linux'",
+    "python-rtmidi; sys_platform == 'linux'",
+]
+
+[project.optional-dependencies]
+pi = [
+    "JACK-Client",
+    "jack_server",
+    "python-rtmidi",
+]
+
+[tool.uv.sources]
+pyside6-helpers = { git = "https://github.com/MrFrangipane/pyside6-helpers", branch = "main" }
+python-helpers = { git = "https://github.com/MrFrangipane/python-helpers", branch = "main" }

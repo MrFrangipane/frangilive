@@ -1,2 +1,7 @@
 video
-__pycache__
+__pycache__/
+*.py[cod]
+.venv/
+.uv/
+dist/
+*.egg-info/

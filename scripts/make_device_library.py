@@ -1,8 +1,10 @@
+import json
+from dataclasses import asdict
 from importlib.resources import files, as_file
 
-from frangilive.instrument.audio import AudioInstrument
-from frangilive.instrument.audio_port import AudioPort
-from frangilive.device.device_library import DeviceLibrary
+from frangilive.devices.domain.audio_instrument import AudioInstrument
+from frangilive.devices.domain.audio_port import AudioPort
+from frangilive.devices.domain.device_library import DeviceLibrary
 
 
 if __name__ == "__main__":
@@ -106,8 +108,9 @@ if __name__ == "__main__":
     resource_path = files("frangilive.resources").joinpath("devices.json")
     with as_file(resource_path) as p:
         with open(p, "w") as f:
-            f.write(device_library.to_json(indent=2))
+            json.dump(asdict(device_library), f, indent=2)
 
-        with open(p, "r") as f:
-            d = DeviceLibrary.from_json(f.read())
-            assert d == device_library
+        from frangilive.devices.infrastructure.json_device_repository import JsonDeviceRepository
+        d = JsonDeviceRepository().load_library()
+        assert d == device_library
+        print("Device library successfully generated and verified.")

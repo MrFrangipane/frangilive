@@ -27,12 +27,9 @@ cd ..
 systemctl start overwitch --user
 systemctl --user enable overwitch.service
 
-# PYTHON
+# PYTHON & UV
 
-cd ~
-python -m venv frangilive
-source frangilive/bin/activate
+command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 
-pip install -r requirements.txt
-
-python test.py
+uv sync --extra pi

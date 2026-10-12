@@ -45,7 +45,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setApplicationName("Frangilive")
     app.setOrganizationName("Frangitron")
-    css.load_onto(app)
+    css.load_onto(app, "dark-touch.qss")
 
     patcher_widget = PatcherWidget(app=frangilive_app)
 

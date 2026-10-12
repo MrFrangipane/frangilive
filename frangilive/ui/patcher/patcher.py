@@ -58,7 +58,7 @@ class PatcherWidget(QWidget):
                 layout.addWidget(in_button, row, 5)
 
         # Actions
-        self.button_disconnect = make_button("Disconnect", checkable=False, color="#DE3838")
+        self.button_disconnect = make_button("Disconnect", checkable=False, confirm=True, color="#DE3838")
         self.button_disconnect.setEnabled(False)
         self.button_disconnect.clicked.connect(self._disconnect)
         layout.addWidget(self.button_disconnect, instrument_count, 0, 1, 3)
