@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QPushButton, QSizePolicy
 
-from pyside6helpers.confirm_button import ConfirmButton
+from frangilive.ui.widgets import ConfirmButton
 
 
 def make_button(text: str, checkable=True, confirm=False, color=None):

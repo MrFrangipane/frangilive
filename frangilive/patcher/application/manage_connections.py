@@ -81,3 +81,16 @@ class ManageConnectionsUseCase:
     def clear_all_connections(self) -> None:
         self.router_gateway.remove_all_connections()
         self.patcher.connections.clear()
+
+    def empty_patch(self) -> None:
+        self.clear_all_connections()
+
+    def apply_connections(self, connections: list[AudioConnection]) -> None:
+        self.clear_all_connections()
+        for conn in connections:
+            self.connect(
+                conn.source_instrument.name,
+                conn.source_port.name,
+                conn.target_instrument.name,
+                conn.target_port.name,
+            )

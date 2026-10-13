@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QWidget
 from pyside6helpers.main_window import MainWindow
 from pyside6helpers import css
 
@@ -16,6 +16,7 @@ else:
     from frangilive.audio.infrastructure.mock_audio_system import MockAudioSystem
     audio_system = MockAudioSystem()
 
+from frangilive.ui.cues.cue_widget import CueWidget
 from frangilive.ui.patcher.patcher_widget import PatcherWidget
 
 
@@ -47,10 +48,19 @@ if __name__ == "__main__":
     app.setOrganizationName("Frangitron")
     css.load_onto(app, "dark-touch.qss")
 
+    main_container = QWidget()
+    main_layout = QHBoxLayout(main_container)
+    main_layout.setContentsMargins(0, 0, 0, 0)
+    main_layout.setSpacing(0)
+
     patcher_widget = PatcherWidget(app=frangilive_app)
+    cue_widget = CueWidget(app=frangilive_app, patcher_widget=patcher_widget)
+
+    main_layout.addWidget(patcher_widget, stretch=1)
+    main_layout.addWidget(cue_widget, stretch=0)
 
     window = MainWindow()
-    window.setCentralWidget(patcher_widget)
+    window.setCentralWidget(main_container)
     window.show()
 
     sys.exit(app.exec())
