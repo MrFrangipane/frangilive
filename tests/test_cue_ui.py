@@ -27,6 +27,7 @@ class TestCueUI(unittest.TestCase):
             audio_router=self.mock_audio,
             audio_engine=self.mock_audio,
             midi_gateway=MidoMidiGateway(),
+            auto_save_cues_on_exit=False,
         )
         self.patcher_widget = PatcherWidget(app=self.app)
         self.cue_widget = CueWidget(app=self.app, patcher_widget=self.patcher_widget)

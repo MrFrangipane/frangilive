@@ -1,7 +1,35 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Iterator
+from typing import TYPE_CHECKING, Any, Iterator
+
+if TYPE_CHECKING:
+    from frangilive.devices.domain.device_library import DeviceLibrary
+
 from frangilive.patcher.domain.audio_connection import AudioConnection
-from frangilive.cues.domain.cue import Cue
+from frangilive.cues.domain.cue import Cue, CueSnapshot
+
+
+@dataclass(frozen=True)
+class CueListSnapshot:
+    """Fully immutable snapshot representing an entire cue list's persistent state."""
+    cues: tuple[CueSnapshot, ...] = ()
+    current_index: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "cues": [c.to_dict() for c in self.cues],
+            "current_index": self.current_index,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CueListSnapshot:
+        return cls(
+            cues=tuple(CueSnapshot.from_dict(c) for c in data.get("cues", [])),
+            current_index=data.get("current_index"),
+        )
+
+    def to_cue_list(self, library: DeviceLibrary) -> CueList:
+        return CueList.from_snapshot(self, library)
 
 
 @dataclass
@@ -98,6 +126,17 @@ class CueList:
     def clear(self) -> None:
         self.cues.clear()
         self.current_index = None
+
+    def to_snapshot(self) -> CueListSnapshot:
+        return CueListSnapshot(
+            cues=tuple(cue.to_snapshot() for cue in self.cues),
+            current_index=self.current_index,
+        )
+
+    @classmethod
+    def from_snapshot(cls, snapshot: CueListSnapshot, library: DeviceLibrary) -> CueList:
+        cues = [Cue.from_snapshot(cs, library) for cs in snapshot.cues]
+        return cls(cues=cues, current_index=snapshot.current_index)
 
     def __len__(self) -> int:
         return len(self.cues)

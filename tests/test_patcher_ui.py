@@ -28,7 +28,8 @@ class TestPatcherUI(unittest.TestCase):
             device_repo=JsonDeviceRepository(),
             audio_router=self.mock_audio,
             audio_engine=self.mock_audio,
-            midi_gateway=MidoMidiGateway()
+            midi_gateway=MidoMidiGateway(),
+            auto_save_cues_on_exit=False,
         )
         self.widget = PatcherWidget(app=self.app)
         self.widget.resize(800, 600)

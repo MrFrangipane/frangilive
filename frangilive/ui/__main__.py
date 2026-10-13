@@ -40,12 +40,15 @@ if __name__ == "__main__":
         interface_name="Fireface"
     )
     frangilive_app.manage_connections.clear_all_connections()
+    if frangilive_app.cue_list.current_cue is not None:
+        frangilive_app.manage_connections.apply_connections(frangilive_app.cue_list.current_cue.connections)
 
     #
     # Ui
     app = QApplication(sys.argv)
     app.setApplicationName("Frangilive")
     app.setOrganizationName("Frangitron")
+    app.aboutToQuit.connect(frangilive_app.save_cues)
     css.load_onto(app, "dark-touch.qss")
 
     main_container = QWidget()

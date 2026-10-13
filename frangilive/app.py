@@ -1,6 +1,9 @@
+import atexit
 from frangilive.patcher.domain.patcher import Patcher
 from frangilive.cues.domain.cue import Cue
 from frangilive.cues.domain.cue_list import CueList
+from frangilive.cues.interfaces.cue_repository import CueRepository
+from frangilive.cues.infrastructure.json_cue_repository import JsonCueRepository
 from frangilive.devices.interfaces.device_repository import DeviceRepository
 from frangilive.audio.interfaces.audio_router import AudioRouterGateway
 from frangilive.audio.interfaces.audio_engine import AudioEngineGateway
@@ -18,17 +21,46 @@ class FrangiliveApp:
             device_repo: DeviceRepository,
             audio_router: AudioRouterGateway,
             audio_engine: AudioEngineGateway,
-            midi_gateway: MidiGateway
+            midi_gateway: MidiGateway,
+            cue_repo: CueRepository | None = None,
+            auto_save_cues_on_exit: bool = True,
     ):
         self.device_repo = device_repo
         self.device_library = self.device_repo.load_library()
         self.patcher = Patcher(device_library=self.device_library)
-        self.cue_list = CueList()
+        self.cue_repo = cue_repo if cue_repo is not None else JsonCueRepository()
+
+        loaded_cues = self.cue_repo.load_cues(self.device_library)
+        self.cue_list = loaded_cues if loaded_cues is not None else CueList()
 
         self.manage_connections = ManageConnectionsUseCase(audio_router, self.patcher)
         self.manage_cues = ManageCuesUseCase(self.cue_list, self.manage_connections, self.patcher)
         self.manage_engine = ManageAudioEngineUseCase(audio_engine)
         self.forward_midi = ForwardMidiUseCase(midi_gateway)
+
+        if self.cue_list.current_cue is not None:
+            self.manage_connections.apply_connections(self.cue_list.current_cue.connections)
+
+        self._auto_save_cues_on_exit = auto_save_cues_on_exit
+        if self._auto_save_cues_on_exit:
+            atexit.register(self.save_cues)
+
+    def save_cues(self) -> None:
+        """Persists the current cue list using the configured cue repository."""
+        if self.cue_repo is not None:
+            self.cue_repo.save_cues(self.cue_list)
+
+    def load_cues(self) -> CueList | None:
+        """Loads cues from the repository and activates the current cue if available."""
+        if self.cue_repo is not None:
+            loaded = self.cue_repo.load_cues(self.device_library)
+            if loaded is not None:
+                self.cue_list = loaded
+                self.manage_cues.cue_list = loaded
+                if self.cue_list.current_cue is not None:
+                    self.manage_connections.apply_connections(self.cue_list.current_cue.connections)
+                return loaded
+        return None
 
     def connect(self, source_name: str, source_port_name: str, target_name: str, target_port_name: str) -> bool:
         return self.manage_connections.connect(source_name, source_port_name, target_name, target_port_name)

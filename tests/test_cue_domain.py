@@ -6,9 +6,9 @@ from frangilive.devices.domain.audio_port import AudioPort
 from frangilive.devices.domain.device_library import DeviceLibrary
 from frangilive.devices.infrastructure.json_device_repository import JsonDeviceRepository
 from frangilive.midi.infrastructure.mido_midi_gateway import MidoMidiGateway
-from frangilive.patcher.domain.audio_connection import AudioConnection
-from frangilive.cues.domain.cue import Cue
-from frangilive.cues.domain.cue_list import CueList
+from frangilive.patcher.domain.audio_connection import AudioConnection, AudioConnectionSnapshot
+from frangilive.cues.domain.cue import Cue, CueSnapshot
+from frangilive.cues.domain.cue_list import CueList, CueListSnapshot
 from frangilive.patcher.domain.patcher import Patcher
 from frangilive.patcher.application.manage_connections import ManageConnectionsUseCase
 from frangilive.cues.application.manage_cues import ManageCuesUseCase
@@ -227,6 +227,7 @@ class TestCueDomainAndApplication(unittest.TestCase):
             audio_router=MockAudioSystem(),
             audio_engine=MockAudioSystem(),
             midi_gateway=MidoMidiGateway(),
+            auto_save_cues_on_exit=False,
         )
 
         digitakt = app.device_library.get_instrument("Digitakt")
@@ -247,6 +248,127 @@ class TestCueDomainAndApplication(unittest.TestCase):
         self.assertEqual(del_cue, cue1)
         self.assertEqual(len(app.cue_list), 0)
         self.assertEqual(len(app.patcher.connections), 0)
+
+    def test_audio_connection_snapshot_roundtrip(self):
+        conn = AudioConnection(self.inst_a, self.inst_a.outputs[0], self.inst_b, self.inst_b.inputs[0])
+        snapshot = conn.to_snapshot()
+
+        self.assertEqual(snapshot.source_instrument, "SynthA")
+        self.assertEqual(snapshot.source_port, "Out1")
+        self.assertEqual(snapshot.target_instrument, "EffectB")
+        self.assertEqual(snapshot.target_port, "In1")
+
+        # Immutability
+        with self.assertRaises(Exception):
+            setattr(snapshot, "source_instrument", "Other")
+
+        # Dict serialization / deserialization
+        data = snapshot.to_dict()
+        self.assertEqual(data, {
+            "source_instrument": "SynthA",
+            "source_port": "Out1",
+            "target_instrument": "EffectB",
+            "target_port": "In1",
+        })
+        rebuilt_snapshot = AudioConnectionSnapshot.from_dict(data)
+        self.assertEqual(snapshot, rebuilt_snapshot)
+
+        # Reconstitution to domain connection
+        restored_conn = AudioConnection.from_snapshot(rebuilt_snapshot, self.library)
+        self.assertEqual(restored_conn, conn)
+        self.assertEqual(rebuilt_snapshot.to_connection(self.library), conn)
+
+    def test_cue_snapshot_roundtrip(self):
+        conn1 = AudioConnection(self.inst_a, self.inst_a.outputs[0], self.inst_b, self.inst_b.inputs[0])
+        conn2 = AudioConnection(self.inst_b, self.inst_b.outputs[0], self.inst_c, self.inst_c.inputs[0])
+        cue = Cue(name="Solo", connections=[conn1, conn2])
+
+        snapshot = cue.to_snapshot()
+        self.assertEqual(snapshot.name, "Solo")
+        self.assertEqual(len(snapshot.connections), 2)
+        self.assertIsInstance(snapshot.connections, tuple)
+
+        # Immutability
+        with self.assertRaises(Exception):
+            setattr(snapshot, "name", "Mutated")
+
+        # Dict serialization / deserialization
+        data = snapshot.to_dict()
+        self.assertEqual(data["name"], "Solo")
+        self.assertEqual(len(data["connections"]), 2)
+
+        rebuilt_snapshot = CueSnapshot.from_dict(data)
+        self.assertEqual(snapshot, rebuilt_snapshot)
+
+        # Reconstitution to domain cue
+        restored_cue = Cue.from_snapshot(rebuilt_snapshot, self.library)
+        self.assertEqual(restored_cue.name, "Solo")
+        self.assertEqual(restored_cue.connections, [conn1, conn2])
+        self.assertEqual(rebuilt_snapshot.to_cue(self.library).connections, [conn1, conn2])
+
+    def test_cue_list_snapshot_roundtrip(self):
+        conn1 = AudioConnection(self.inst_a, self.inst_a.outputs[0], self.inst_b, self.inst_b.inputs[0])
+        cue1 = Cue(name="Verse", connections=[conn1])
+        cue2 = Cue(name="Chorus", connections=[])
+        cue_list = CueList(cues=[cue1, cue2], current_index=1)
+
+        snapshot = cue_list.to_snapshot()
+        self.assertEqual(len(snapshot.cues), 2)
+        self.assertEqual(snapshot.current_index, 1)
+        self.assertIsInstance(snapshot.cues, tuple)
+
+        # Immutability
+        with self.assertRaises(Exception):
+            setattr(snapshot, "current_index", 0)
+
+        # Dict serialization / deserialization
+        data = snapshot.to_dict()
+        rebuilt_snapshot = CueListSnapshot.from_dict(data)
+        self.assertEqual(snapshot, rebuilt_snapshot)
+
+        # Reconstitution to domain cue list
+        restored_list = CueList.from_snapshot(rebuilt_snapshot, self.library)
+        self.assertEqual(len(restored_list), 2)
+        self.assertEqual(restored_list.current_index, 1)
+        self.assertEqual(restored_list[0].name, "Verse")
+        self.assertEqual(restored_list[0].connections, [conn1])
+        self.assertEqual(restored_list[1].name, "Chorus")
+        self.assertEqual(restored_list[1].connections, [])
+        self.assertEqual(len(rebuilt_snapshot.to_cue_list(self.library)), 2)
+
+    def test_snapshot_reconstitution_error_handling(self):
+        # Missing source instrument
+        invalid_src_snap = AudioConnectionSnapshot(
+            source_instrument="GhostSynth",
+            source_port="Out1",
+            target_instrument="EffectB",
+            target_port="In1",
+        )
+        with self.assertRaises(ValueError) as ctx:
+            AudioConnection.from_snapshot(invalid_src_snap, self.library)
+        self.assertIn("Source instrument 'GhostSynth' not found", str(ctx.exception))
+
+        # Missing target instrument
+        invalid_tgt_snap = AudioConnectionSnapshot(
+            source_instrument="SynthA",
+            source_port="Out1",
+            target_instrument="GhostEffect",
+            target_port="In1",
+        )
+        with self.assertRaises(ValueError) as ctx:
+            AudioConnection.from_snapshot(invalid_tgt_snap, self.library)
+        self.assertIn("Target instrument 'GhostEffect' not found", str(ctx.exception))
+
+        # Missing port
+        invalid_port_snap = AudioConnectionSnapshot(
+            source_instrument="SynthA",
+            source_port="NonExistentPort",
+            target_instrument="EffectB",
+            target_port="In1",
+        )
+        with self.assertRaises(ValueError) as ctx:
+            AudioConnection.from_snapshot(invalid_port_snap, self.library)
+        self.assertIn("Output port 'NonExistentPort' not found", str(ctx.exception))
 
 
 if __name__ == "__main__":
