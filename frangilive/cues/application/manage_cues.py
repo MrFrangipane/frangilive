@@ -75,8 +75,9 @@ class ManageCuesUseCase:
             return None
         removed = self.cue_list.remove_cue(target_idx)
         if removed is not None:
-            if self.cue_list.current_cue is not None:
-                self.manage_connections.apply_connections(self.cue_list.current_cue.connections)
+            current_cue = self.cue_list.current_cue
+            if current_cue is not None:
+                self.manage_connections.apply_connections(current_cue.connections)
             else:
                 self.manage_connections.empty_patch()
         return removed

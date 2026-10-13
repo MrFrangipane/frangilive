@@ -50,7 +50,7 @@ class CueWidget(QWidget):
 
         # Title
         title_label = QLabel("CUES")
-        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setStyleSheet("font-weight: bold; font-size: 14pt; padding: 4px;")
         main_layout.addWidget(title_label)
 
@@ -146,7 +146,7 @@ class CueWidget(QWidget):
 
     def create_new_cue(self):
         """Creates a new cue from current patch and selects it."""
-        cue = self._app.create_cue_from_current_patch()
+        self._app.create_cue_from_current_patch()
         self.refresh_cues()
         if self._app.cue_list.current_index is not None:
             self._notify_cue_changed(self._app.cue_list.current_index)
@@ -207,6 +207,3 @@ class CueWidget(QWidget):
     def _notify_cue_changed(self, index: int):
         self.cueChanged.emit(index)
         self.patchChanged.emit()
-        if self._patcher_widget is not None:
-            self._patcher_widget.connectionChanged.emit()
-            self._patcher_widget.update()

@@ -14,10 +14,13 @@ class CueList:
 
     def __post_init__(self):
         self.cues = list(self.cues)
-        if self.cues and self.current_index is None:
-            self.current_index = 0
-        elif not self.cues:
+        if not self.cues:
             self.current_index = None
+        elif self.current_index is None:
+            self.current_index = 0
+        else:
+            self.current_index = max(0, min(self.current_index, len(self.cues) - 1))
+
 
     @property
     def current_cue(self) -> Cue | None:
