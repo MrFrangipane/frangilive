@@ -567,6 +567,104 @@ class TestPatcherUI(unittest.TestCase):
         self.widget._select_default_port(mic, is_output=True)
         self.assertEqual(mic.get_default_output().name, "Out")
 
+    def test_drag_hover_target_with_no_inputs_is_highlighted_as_invalid(self):
+        # MF-101 (has outputs) -> Digitakt (has no inputs)
+        rects = self.widget._calculate_node_rects()
+        mf101_rect = rects["MF-101"]
+        digitakt_rect = rects["Digitakt"]
+
+        mf101 = self.app.device_library.get_instrument("MF-101")
+        digitakt = self.app.device_library.get_instrument("Digitakt")
+        self.assertEqual(len(digitakt.inputs), 0)
+
+        # Start drag from MF-101
+        press_pos = mf101_rect.center()
+        self.widget._handle_press(press_pos)
+        self.widget._handle_move(QPointF(press_pos.x() + 20, press_pos.y() + 20))
+        self.assertTrue(self.widget._is_dragging)
+
+        # Hover over Digitakt
+        self.widget._handle_move(digitakt_rect.center())
+        self.assertIsNone(self.widget._hover_target_device)
+        self.assertEqual(self.widget._hover_invalid_target_device, digitakt)
+        self.assertFalse(self.widget._hover_long_press_timer.isActive())
+
+        # Render during invalid hover
+        image = QImage(800, 600, QImage.Format_ARGB32)
+        self.widget.render(image)
+        self.assertFalse(image.isNull())
+
+        # Release on Digitakt should not connect
+        self.widget._handle_release(digitakt_rect.center())
+        self.assertFalse(self.widget._is_dragging)
+        self.assertEqual(len(self.app.patcher.connections), 0)
+
+    def test_drag_hover_target_creating_cycle_is_highlighted_as_invalid(self):
+        # Connect MF-101 -> MuRF
+        self.app.connect("MF-101", "Main L", "MuRF", "Main L")
+        self.assertEqual(len(self.app.patcher.connections), 1)
+
+        rects = self.widget._calculate_node_rects()
+        murf_rect = rects["MuRF"]
+        mf101_rect = rects["MF-101"]
+
+        murf = self.app.device_library.get_instrument("MuRF")
+        mf101 = self.app.device_library.get_instrument("MF-101")
+
+        # Start drag from MuRF
+        press_pos = murf_rect.center()
+        self.widget._handle_press(press_pos)
+        self.widget._handle_move(QPointF(press_pos.x() + 20, press_pos.y() + 20))
+        self.assertTrue(self.widget._is_dragging)
+
+        # Hover over MF-101 (would create cycle: MF-101 -> MuRF -> MF-101)
+        self.widget._handle_move(mf101_rect.center())
+        self.assertIsNone(self.widget._hover_target_device)
+        self.assertEqual(self.widget._hover_invalid_target_device, mf101)
+        self.assertFalse(self.widget._hover_long_press_timer.isActive())
+
+        # Release on MF-101 should not connect and should maintain acyclic graph
+        self.widget._handle_release(mf101_rect.center())
+        self.assertFalse(self.widget._is_dragging)
+        self.assertEqual(len(self.app.patcher.connections), 1)
+        self.assertTrue(self.app.patcher.is_acyclic())
+
+    def test_drag_hover_target_acyclic_with_inputs_is_valid(self):
+        # MF-101 -> MuRF is acyclic and MuRF has inputs
+        rects = self.widget._calculate_node_rects()
+        mf101_rect = rects["MF-101"]
+        murf_rect = rects["MuRF"]
+
+        mf101 = self.app.device_library.get_instrument("MF-101")
+        murf = self.app.device_library.get_instrument("MuRF")
+
+        # Start drag from MF-101
+        press_pos = mf101_rect.center()
+        self.widget._handle_press(press_pos)
+        self.widget._handle_move(QPointF(press_pos.x() + 20, press_pos.y() + 20))
+        self.assertTrue(self.widget._is_dragging)
+
+        # Hover over MuRF
+        self.widget._handle_move(murf_rect.center())
+        self.assertEqual(self.widget._hover_target_device, murf)
+        self.assertIsNone(self.widget._hover_invalid_target_device)
+        self.assertTrue(self.widget._hover_long_press_timer.isActive())
+
+        # Release connects
+        self.widget._handle_release(murf_rect.center())
+        self.assertEqual(len(self.app.patcher.connections), 1)
+
+    def test_custom_invalid_hover_colors_config(self):
+        custom_config = PatcherWidgetConfig(
+            node_invalid_hover_border_color="#FF0000",
+            node_invalid_hover_background_color="#330000",
+            drag_invalid_hover_cable_color="#FF0000",
+        )
+        widget = PatcherWidget(app=self.app, config=custom_config)
+        self.assertEqual(widget.config.node_invalid_hover_border_color, "#FF0000")
+        self.assertEqual(widget.config.node_invalid_hover_background_color, "#330000")
+        self.assertEqual(widget.config.drag_invalid_hover_cable_color, "#FF0000")
+
 
 if __name__ == "__main__":
     unittest.main()

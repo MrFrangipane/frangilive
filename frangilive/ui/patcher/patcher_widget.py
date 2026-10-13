@@ -52,6 +52,7 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
         self._press_pos = QPointF()
         self._press_device: AudioInstrument | None = None
         self._hover_target_device: AudioInstrument | None = None
+        self._hover_invalid_target_device: AudioInstrument | None = None
 
         # Timers for touch & long press (configurable)
         self._long_press_timer = QTimer(self)
@@ -181,6 +182,18 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
 
         return None
 
+    def _is_target_valid_for_connection(
+            self,
+            source: AudioInstrument,
+            target: AudioInstrument,
+    ) -> bool:
+        """Checks whether target has available inputs and connecting source->target is acyclic."""
+        if not target.inputs:
+            return False
+        if source.name == target.name:
+            return False
+        return not self._patcher.would_create_cycle_between(source.name, target.name)
+
     def _drag_path(self, node_rects: dict[str, QRectF]) -> QPainterPath:
         """Builds the visual path for the current drag connection."""
         if not self._drag_source_device:
@@ -193,8 +206,9 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
         target_shape = None
         target_point = self._current_drag_pos
 
-        if self._hover_target_device:
-            tgt_rect = node_rects.get(self._hover_target_device.name)
+        target_device = self._hover_target_device or self._hover_invalid_target_device
+        if target_device:
+            tgt_rect = node_rects.get(target_device.name)
             if tgt_rect:
                 target_shape = node_shape(tgt_rect)
                 target_point = tgt_rect.center()
@@ -221,6 +235,7 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
         self._drag_source_device = None
         self._drag_source_port = None
         self._hover_target_device = None
+        self._hover_invalid_target_device = None
         self._press_device = None
         self.update()
 
@@ -284,11 +299,18 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
             self._current_drag_pos = pos
             target_device = self._get_device_at_pos(pos)
 
-            if target_device and target_device != self._drag_source_device and target_device.inputs:
-                self._hover_target_device = target_device
-                self._hover_long_press_timer.start()
+            if target_device and target_device != self._drag_source_device:
+                if self._is_target_valid_for_connection(self._drag_source_device, target_device):
+                    self._hover_target_device = target_device
+                    self._hover_invalid_target_device = None
+                    self._hover_long_press_timer.start()
+                else:
+                    self._hover_target_device = None
+                    self._hover_invalid_target_device = target_device
+                    self._hover_long_press_timer.stop()
             else:
                 self._hover_target_device = None
+                self._hover_invalid_target_device = None
                 self._hover_long_press_timer.stop()
 
             self.update()
@@ -302,9 +324,9 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
             if (
                     target_device
                     and target_device != self._drag_source_device
-                    and target_device.inputs
                     and self._drag_source_device
                     and self._drag_source_port
+                    and self._is_target_valid_for_connection(self._drag_source_device, target_device)
             ):
                 default_in = target_device.get_default_input()
                 target_port = default_in.name if default_in else None
@@ -385,7 +407,7 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
         source_device = self._drag_source_device
         source_port = self._drag_source_port
 
-        if not target_device.inputs or not source_port:
+        if not self._is_target_valid_for_connection(source_device, target_device) or not source_port:
             self._cancel_drag()
             return
 

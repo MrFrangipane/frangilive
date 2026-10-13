@@ -48,6 +48,10 @@ class PatcherWidgetConfig:
     node_hover_border_color: str = "#98C379"
     node_hover_border_width: float = 3.0
     node_hover_background_color: str = "#2D3748"
+    node_invalid_hover_border_color: str = "#E06C75"
+    node_invalid_hover_border_width: float = 3.0
+    node_invalid_hover_background_color: str = "#3E272B"
+    drag_invalid_hover_cable_color: str = "#E06C75"
     node_drag_border_color: str = "#E5C07B"
     node_drag_border_width: float = 3.0
     node_drag_background_color: str = "#3E3D32"

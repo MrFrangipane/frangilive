@@ -23,6 +23,9 @@ class ManageConnectionsUseCase:
         if connection in self.patcher.connections:
             return False
 
+        if not self.patcher.can_add_connection(connection):
+            return False
+
         self._connect_ports(source_port, target_port)
         self.patcher.add_connection(connection)
         return True

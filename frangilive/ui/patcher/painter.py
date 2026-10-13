@@ -143,11 +143,12 @@ class PatcherPainterMixin:
         if drag_path.isEmpty():
             return
 
-        drag_color = (
-            QColor(self._config.drag_cable_color)
-            if not self._hover_target_device
-            else QColor(self._config.drag_hover_cable_color)
-        )
+        if getattr(self, "_hover_invalid_target_device", None):
+            drag_color = QColor(self._config.drag_invalid_hover_cable_color)
+        elif self._hover_target_device:
+            drag_color = QColor(self._config.drag_hover_cable_color)
+        else:
+            drag_color = QColor(self._config.drag_cable_color)
 
         self._draw_arrow(
             painter,
@@ -263,6 +264,10 @@ class PatcherPainterMixin:
             is_pressed = self._press_device == instrument and not self._is_dragging
             is_drag_source = self._is_dragging and self._drag_source_device == instrument
             is_hover_target = self._is_dragging and self._hover_target_device == instrument
+            is_invalid_hover_target = (
+                self._is_dragging
+                and getattr(self, "_hover_invalid_target_device", None) == instrument
+            )
             has_connections = any(
                 c.source_instrument == instrument or c.target_instrument == instrument
                 for c in self._patcher.connections
@@ -276,6 +281,10 @@ class PatcherPainterMixin:
                 border_color = QColor(self._config.node_hover_border_color)
                 border_width = self._config.node_hover_border_width
                 bg_color = QColor(self._config.node_hover_background_color)
+            elif is_invalid_hover_target:
+                border_color = QColor(self._config.node_invalid_hover_border_color)
+                border_width = self._config.node_invalid_hover_border_width
+                bg_color = QColor(self._config.node_invalid_hover_background_color)
             elif is_drag_source:
                 border_color = QColor(self._config.node_drag_border_color)
                 border_width = self._config.node_drag_border_width
@@ -295,7 +304,7 @@ class PatcherPainterMixin:
             painter.setPen(
                 QColor(
                     self._config.node_active_text_color
-                    if is_drag_source or is_hover_target
+                    if is_drag_source or is_hover_target or is_invalid_hover_target
                     else self._config.node_text_color
                 )
             )
