@@ -1,4 +1,5 @@
 import math
+import re
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QPointF, QRectF, Qt
@@ -44,7 +45,6 @@ class PatcherPainterMixin:
             self._draw_drag_arrow(painter, node_rects)
 
         self._draw_device_nodes(painter, node_rects)
-        self._draw_info_hint(painter)
 
         painter.end()
 
@@ -61,81 +61,190 @@ class PatcherPainterMixin:
         painter.setBrush(Qt.NoBrush)
         painter.drawEllipse(QPointF(center_x, center_y), radius, radius)
 
+    def _format_aggregated_connection_label(self, connections: list["AudioConnection"]) -> str:
+        """
+        Formats a combined badge label for connections between the same pair of devices.
+        Aggregates track/port ranges (e.g., 'Tracks 2–4') or multiline/cable count.
+        Omits port names when a device only has one port of that kind (input or output).
+        """
+        if not connections:
+            return ""
+
+        src_inst = connections[0].source_instrument
+        tgt_inst = connections[0].target_instrument
+        src_has_multiple = len(src_inst.outputs) > 1
+        tgt_has_multiple = len(tgt_inst.inputs) > 1
+
+        if not src_has_multiple and not tgt_has_multiple:
+            return "" if len(connections) == 1 else f"{len(connections)} Cables"
+
+        if len(connections) == 1:
+            conn = connections[0]
+            if src_has_multiple and tgt_has_multiple:
+                return f"{conn.source_port.name} → {conn.target_port.name}"
+            elif src_has_multiple:
+                return conn.source_port.name
+            else:
+                return conn.target_port.name
+
+        src_ports = [c.source_port.name for c in connections]
+        tgt_ports = [c.target_port.name for c in connections]
+
+        def _summarize_ports(ports: list[str]) -> str:
+            if not ports:
+                return ""
+            if len(ports) == 1:
+                return ports[0]
+            if all(p == ports[0] for p in ports):
+                return ports[0]
+
+            pattern = re.compile(r"^([A-Za-z\s_-]*?)(\d+)(.*)$")
+            matches = [pattern.match(p) for p in ports]
+            if all(m is not None for m in matches):
+                prefixes = [m.group(1) for m in matches]  # type: ignore
+                suffixes = [m.group(3) for m in matches]  # type: ignore
+                if len(set(prefixes)) == 1 and len(set(suffixes)) == 1:
+                    prefix = prefixes[0]
+                    suffix = suffixes[0]
+                    nums = [int(m.group(2)) for m in matches]  # type: ignore
+                    min_n, max_n = min(nums), max(nums)
+                    if nums == list(range(min_n, max_n + 1)) and len(nums) >= 2:
+                        clean_prefix = prefix.strip()
+                        if clean_prefix.lower() in ("track", "tr"):
+                            prefix_display = "Tracks "
+                        elif clean_prefix.lower() == "output":
+                            prefix_display = "Outputs "
+                        elif clean_prefix.lower() == "out":
+                            prefix_display = "Out "
+                        elif clean_prefix.lower() == "input":
+                            prefix_display = "Inputs "
+                        elif clean_prefix.lower() == "in":
+                            prefix_display = "In "
+                        elif clean_prefix.lower() == "port":
+                            prefix_display = "Ports "
+                        elif clean_prefix.lower() == "channel":
+                            prefix_display = "Channels "
+                        elif clean_prefix.lower() == "ch":
+                            prefix_display = "Ch "
+                        else:
+                            prefix_display = prefix
+                        return f"{prefix_display}{min_n}–{max_n}{suffix}"
+
+                    clean_prefix = prefix.strip()
+                    if clean_prefix.lower() in ("track", "tr"):
+                        prefix_display = "Tracks "
+                    else:
+                        prefix_display = prefix
+                    nums_str = ", ".join(str(n) for n in nums)
+                    return f"{prefix_display}{nums_str}{suffix}"
+
+            if len(ports) == 2 and ports[0].startswith("Main ") and ports[1].startswith("Main "):
+                p0_s = ports[0][5:]
+                p1_s = ports[1][5:]
+                return f"Main {p0_s}/{p1_s}"
+
+            return ", ".join(ports)
+
+        src_summary = _summarize_ports(src_ports)
+        tgt_summary = _summarize_ports(tgt_ports)
+
+        if src_has_multiple and not tgt_has_multiple:
+            if ("," not in src_summary or len(src_ports) <= 2) or "–" in src_summary or "/" in src_summary:
+                return src_summary
+            if len(connections) <= 3:
+                return "\n".join(c.source_port.name for c in connections)
+            return f"{len(connections)} Cables"
+
+        if not src_has_multiple and tgt_has_multiple:
+            if ("," not in tgt_summary or len(tgt_ports) <= 2) or "–" in tgt_summary or "/" in tgt_summary:
+                return tgt_summary
+            if len(connections) <= 3:
+                return "\n".join(c.target_port.name for c in connections)
+            return f"{len(connections)} Cables"
+
+        if all(tp == tgt_ports[0] for tp in tgt_ports):
+            return f"{src_summary} → {tgt_ports[0]}"
+
+        if all(sp == src_ports[0] for sp in src_ports):
+            return f"{src_ports[0]} → {tgt_summary}"
+
+        if ("," not in src_summary or len(src_ports) <= 2) and ("," not in tgt_summary or len(tgt_ports) <= 2):
+            if "–" in src_summary or "–" in tgt_summary or "/" in src_summary or "/" in tgt_summary:
+                return f"{src_summary} → {tgt_summary}"
+
+        if len(connections) <= 3:
+            return "\n".join(f"{c.source_port.name} → {c.target_port.name}" for c in connections)
+
+        return f"{len(connections)} Cables"
+
     def _draw_connection_arrows(self, painter: QPainter, node_rects: dict[str, QRectF]):
         """Draws directed arrows for all active connections in patcher."""
-        pair_counts: dict[tuple[str, str], int] = {}
+        pair_connections: dict[tuple[str, str], list["AudioConnection"]] = {}
         for conn in self._patcher.connections:
-            pair = (conn.source_instrument.name, conn.target_instrument.name)
-            pair_counts[pair] = pair_counts.get(pair, 0) + 1
+            src_name = conn.source_instrument.name
+            tgt_name = conn.target_instrument.name
+            if src_name not in node_rects or tgt_name not in node_rects:
+                continue
+            pair = (src_name, tgt_name)
+            pair_connections.setdefault(pair, []).append(conn)
 
-        drawn_pairs: dict[tuple[str, str], int] = {}
         placed_label_rects: list[QRectF] = []
         obstacle_rects: list[QRectF] = list(node_rects.values())
 
-        arrows_to_draw = []
+        pair_bundles = []
 
-        for conn in self._patcher.connections:
-            src_inst = conn.source_instrument
-            tgt_inst = conn.target_instrument
-            src_name = src_inst.name
-            tgt_name = tgt_inst.name
+        for pair, conns in pair_connections.items():
+            cable_items = []
+            for offset_idx, conn in enumerate(conns):
+                cable_path = self._connection_path(conn, offset_idx=offset_idx)
+                if cable_path.isEmpty():
+                    continue
 
-            if src_name not in node_rects or tgt_name not in node_rects:
+                cable_color = (
+                    QColor(self._config.primary_cable_color)
+                    if offset_idx == 0
+                    else QColor(self._config.secondary_cable_color)
+                )
+
+                cable_items.append({
+                    "conn": conn,
+                    "path": cable_path,
+                    "color": cable_color,
+                    "offset_idx": offset_idx,
+                })
+
+            if not cable_items:
                 continue
 
-            pair = (src_name, tgt_name)
-            offset_idx = drawn_pairs.get(pair, 0)
-            drawn_pairs[pair] = offset_idx + 1
-            total_pair_conns = pair_counts.get(pair, 1)
-
-            cable_path = self._connection_path(conn, offset_idx=offset_idx)
-            if cable_path.isEmpty():
-                continue
-
-            cable_color = (
-                QColor(self._config.primary_cable_color)
-                if offset_idx == 0
-                else QColor(self._config.secondary_cable_color)
-            )
-            has_multiple_ports = (
-                len(src_inst.outputs) > 1
-                or len(tgt_inst.inputs) > 1
-                or total_pair_conns > 1
-            )
-            wire_label = (
-                f"{conn.source_port.name} → {conn.target_port.name}"
-                if has_multiple_ports
-                else ""
-            )
-
-            arrows_to_draw.append({
-                "path": cable_path,
-                "color": cable_color,
-                "label": wire_label,
-                "offset_idx": offset_idx,
-                "total_pair_conns": total_pair_conns,
-            })
-
-        for item in arrows_to_draw:
-            self._draw_arrow(
-                painter,
-                path=item["path"],
-                color=item["color"],
-                line_width=self._config.connection_line_width,
-                arrow_size=self._config.connection_arrow_size,
-            )
-
-        for item in arrows_to_draw:
-            if item["label"]:
-                self._draw_wire_label(
+            for item in cable_items:
+                self._draw_arrow(
                     painter,
                     path=item["path"],
-                    label=item["label"],
-                    offset_idx=item["offset_idx"],
-                    total_pair_conns=item["total_pair_conns"],
-                    existing_rects=placed_label_rects,
-                    obstacle_rects=obstacle_rects,
+                    color=item["color"],
+                    line_width=self._config.connection_line_width,
+                    arrow_size=self._config.connection_arrow_size,
                 )
+
+            combined_label = self._format_aggregated_connection_label(conns)
+            if combined_label:
+                anchor_idx = len(cable_items) // 2
+                anchor_path = cable_items[anchor_idx]["path"]
+                pair_bundles.append({
+                    "path": anchor_path,
+                    "label": combined_label,
+                    "total_pair_conns": len(conns),
+                })
+
+        for bundle in pair_bundles:
+            self._draw_wire_label(
+                painter,
+                path=bundle["path"],
+                label=bundle["label"],
+                offset_idx=0,
+                total_pair_conns=1,
+                existing_rects=placed_label_rects,
+                obstacle_rects=obstacle_rects,
+            )
 
     def _draw_drag_arrow(self, painter: QPainter, node_rects: dict[str, QRectF]):
         """Draws the dynamic arrow while dragging."""
@@ -221,8 +330,10 @@ class PatcherPainterMixin:
         painter.setFont(font)
 
         fm = painter.fontMetrics()
-        text_w = fm.horizontalAdvance(label) + self._config.wire_label_horizontal_padding
-        text_h = fm.height() + self._config.wire_label_vertical_padding
+        lines = label.split("\n")
+        max_line_w = max(fm.horizontalAdvance(line) for line in lines)
+        text_w = max_line_w + self._config.wire_label_horizontal_padding
+        text_h = (len(lines) * fm.height()) + self._config.wire_label_vertical_padding
 
         badge_rect = find_non_overlapping_label_rect(
             path=path,
@@ -350,25 +461,3 @@ class PatcherPainterMixin:
                 self._config.node_port_rect_height,
             )
             painter.drawText(port_rect, Qt.AlignCenter, port_text)
-
-    def _draw_info_hint(self, painter: QPainter):
-        """Displays subtle hint or connection count in center."""
-        center_x = self.width() / 2.0
-        center_y = self.height() / 2.0
-
-        conns_count = len(self._patcher.connections)
-        hint_text = f"{conns_count} Active Cable{'s' if conns_count != 1 else ''}"
-
-        font = QFont(self.font())
-        font.setPointSize(self._config.info_font_size)
-        font.setBold(True)
-        painter.setFont(font)
-        painter.setPen(QColor(*self._config.info_text_rgba))
-
-        info_rect = QRectF(
-            center_x - self._config.info_rect_width / 2.0,
-            center_y - self._config.info_rect_height / 2.0,
-            self._config.info_rect_width,
-            self._config.info_rect_height,
-        )
-        painter.drawText(info_rect, Qt.AlignCenter, hint_text)

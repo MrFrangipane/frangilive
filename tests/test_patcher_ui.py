@@ -665,6 +665,102 @@ class TestPatcherUI(unittest.TestCase):
         self.assertEqual(widget.config.node_invalid_hover_background_color, "#330000")
         self.assertEqual(widget.config.drag_invalid_hover_cable_color, "#FF0000")
 
+    def test_aggregated_connection_label_formatting(self):
+        from frangilive.patcher.domain.audio_connection import AudioConnection
+        from frangilive.devices.domain.audio_instrument import AudioInstrument
+        from frangilive.devices.domain.audio_port import AudioPort
+
+        # 1. Contiguous track range from multi-output device to single-input target (omits single target input)
+        self.app.connect("Digitakt", "Track 2", "Time Factor", "Main L")
+        self.app.connect("Digitakt", "Track 3", "Time Factor", "Main L")
+        self.app.connect("Digitakt", "Track 4", "Time Factor", "Main L")
+        conns_range = self.app.patcher.get_connections_between("Digitakt", "Time Factor")
+        label_range = self.widget._format_aggregated_connection_label(conns_range)
+        self.assertEqual(label_range, "Tracks 2–4")
+
+        # 2. Non-contiguous tracks from multi-output device to single-input target (omits single target input)
+        self.app.connect("Digitakt", "Track 1", "Main LR", "Main LR")
+        self.app.connect("Digitakt", "Track 3", "Main LR", "Main LR")
+        conns_noncontig = self.app.patcher.get_connections_between("Digitakt", "Main LR")
+        label_noncontig = self.widget._format_aggregated_connection_label(conns_noncontig)
+        self.assertEqual(label_noncontig, "Tracks 1, 3")
+
+        # 3. Single connection cases:
+        # 3a. Multi-output -> Single-input: omits target port
+        conn_dt_mlr = [conns_noncontig[0]]
+        self.assertEqual(self.widget._format_aggregated_connection_label(conn_dt_mlr), "Track 1")
+
+        # 3b. Single-output -> Single-input: omits both ports (empty label)
+        self.app.connect("Microphone", "Out", "Main LR", "Main LR")
+        conn_mic = self.app.patcher.get_connections_between("Microphone", "Main LR")
+        self.assertEqual(self.widget._format_aggregated_connection_label(conn_mic), "")
+
+        # 3c. Single-output -> Multi-input: omits source port
+        inst_single_src = AudioInstrument(name="DevSingle", outputs=[AudioPort(name="Out", left="s1")])
+        inst_multi_tgt = AudioInstrument(name="DevMultiTgt", inputs=[AudioPort(name="In1", left="t1"), AudioPort(name="In2", left="t2")])
+        conn_single_to_multi = [AudioConnection(inst_single_src, inst_single_src.outputs[0], inst_multi_tgt, inst_multi_tgt.inputs[0])]
+        self.assertEqual(self.widget._format_aggregated_connection_label(conn_single_to_multi), "In1")
+
+        # 3d. Multi-output -> Multi-input: includes both ports
+        inst_a = AudioInstrument(name="DevA", outputs=[AudioPort(name="OutA", left="a1"), AudioPort(name="OutB", left="a2")])
+        inst_b = AudioInstrument(name="DevB", inputs=[AudioPort(name="InX", left="b1"), AudioPort(name="InY", left="b2")])
+        conn_multi_to_multi = [AudioConnection(inst_a, inst_a.outputs[0], inst_b, inst_b.inputs[0])]
+        self.assertEqual(self.widget._format_aggregated_connection_label(conn_multi_to_multi), "OutA → InX")
+
+        # 4. Multiline formatting for multiple discrete connections without common pattern between multi-port devices
+        conns_multiline = [
+            AudioConnection(inst_a, inst_a.outputs[0], inst_b, inst_b.inputs[0]),
+            AudioConnection(inst_a, inst_a.outputs[1], inst_b, inst_b.inputs[1]),
+        ]
+        label_multiline = self.widget._format_aggregated_connection_label(conns_multiline)
+        self.assertEqual(label_multiline, "OutA → InX\nOutB → InY")
+
+        # 5. Multi-output to multi-input with aggregated target
+        inst_multi_in = AudioInstrument(name="Mixer", inputs=[AudioPort(name="Input 1", left="m1"), AudioPort(name="Input 2", left="m2")])
+        conns_single_to_multi_bundle = [
+            AudioConnection(inst_single_src, inst_single_src.outputs[0], inst_multi_in, inst_multi_in.inputs[0]),
+            AudioConnection(inst_single_src, inst_single_src.outputs[0], inst_multi_in, inst_multi_in.inputs[1]),
+        ]
+        label_single_to_multi = self.widget._format_aggregated_connection_label(conns_single_to_multi_bundle)
+        self.assertEqual(label_single_to_multi, "Inputs 1–2")
+
+        # 6. Fallback cable count for large arbitrary bundles
+        conns_large = [
+            AudioConnection(inst_a, AudioPort(f"PortA{i}", left=f"a{i}"), inst_b, AudioPort(f"PortB{i}", left=f"b{i}"))
+            for i in [1, 5, 9, 14]
+        ]
+        label_large = self.widget._format_aggregated_connection_label(conns_large)
+        self.assertEqual(label_large, "4 Cables")
+
+    def test_rendering_bundled_connections_into_single_badge(self):
+        # Connect multiple discrete wires between Digitakt and Time Factor
+        self.app.connect("Digitakt", "Track 2", "Time Factor", "Main L")
+        self.app.connect("Digitakt", "Track 3", "Time Factor", "Main L")
+        self.app.connect("Digitakt", "Track 4", "Time Factor", "Main L")
+
+        # Render offscreen widget to verify painter executes cleanly
+        image = QImage(800, 600, QImage.Format_ARGB32)
+        self.widget.render(image)
+        self.assertFalse(image.isNull())
+
+    def test_geometry_default_t_anchor_placement(self):
+        from frangilive.ui.patcher.geometry import find_non_overlapping_label_rect
+
+        self.app.connect("Digitakt", "Track 1", "Main LR", "Main LR")
+        conn = self.app.patcher.connections[0]
+        self.widget._calculate_node_rects()
+        path = self.widget._connection_path(conn)
+
+        rect = find_non_overlapping_label_rect(
+            path=path,
+            badge_width=60.0,
+            badge_height=18.0,
+            offset_idx=0,
+            total_pair_conns=1,
+        )
+        self.assertFalse(rect.isEmpty())
+        self.assertGreater(rect.width(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

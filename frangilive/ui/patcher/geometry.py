@@ -278,16 +278,16 @@ def find_non_overlapping_label_rect(
     obstacles = obstacle_rects or []
 
     if total_pair_conns <= 1:
-        preferred_t = 0.5
+        preferred_t = 0.54
     else:
-        step = min(0.18, 0.45 / max(1, total_pair_conns - 1))
-        preferred_t = 0.5 + (offset_idx - (total_pair_conns - 1) / 2.0) * step
-        preferred_t = max(0.22, min(0.78, preferred_t))
+        step = min(0.14, 0.36 / max(1, total_pair_conns - 1))
+        preferred_t = 0.54 + (offset_idx - (total_pair_conns - 1) / 2.0) * step
+        preferred_t = max(0.28, min(0.72, preferred_t))
 
     candidates = [preferred_t]
-    for delta in [0.06, -0.06, 0.12, -0.12, 0.18, -0.18, 0.24, -0.24, 0.30, -0.30]:
+    for delta in [0.05, -0.05, 0.10, -0.10, 0.15, -0.15, 0.20, -0.20]:
         cand = preferred_t + delta
-        if 0.18 <= cand <= 0.82:
+        if 0.24 <= cand <= 0.76:
             candidates.append(cand)
 
     best_rect: QRectF | None = None
