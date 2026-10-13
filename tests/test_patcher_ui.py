@@ -336,7 +336,7 @@ class TestPatcherUI(unittest.TestCase):
         widget._handle_move(QPointF(press_pos.x() + 60, press_pos.y()))
         self.assertTrue(widget._is_dragging)
 
-    def test_wires_curvature_clockwise_inwards_counterclockwise_outwards(self):
+    def test_wires_curvature_always_bends_towards_center(self):
         import math
         from frangilive.ui.patcher.geometry import path_midpoint, wire_control_point
 
@@ -376,8 +376,8 @@ class TestPatcherUI(unittest.TestCase):
         curve_mid_ccw = path_midpoint(curved_path_ccw)
         dist_curve_ccw = math.hypot(curve_mid_ccw.x() - widget_center.x(), curve_mid_ccw.y() - widget_center.y())
 
-        # Counterclockwise connection must curve OUTWARDS (farther from center)
-        self.assertGreater(dist_curve_ccw, dist_straight_ccw)
+        # Counterclockwise connection must also curve INWARDS (closer to center)
+        self.assertLess(dist_curve_ccw, dist_straight_ccw)
 
     def test_wire_control_point_geometry(self):
         import math
@@ -398,7 +398,7 @@ class TestPatcherUI(unittest.TestCase):
         # Counterclockwise: right -> top
         ctrl_ccw = wire_control_point(right, top, center=center, curvature=0.25)
         dist_ccw = math.hypot(ctrl_ccw.x() - center.x(), ctrl_ccw.y() - center.y())
-        self.assertGreater(dist_ccw, dist_straight)  # Outwards
+        self.assertLess(dist_ccw, dist_straight)  # Inwards
 
         # Center None or curvature 0 -> straight midpoint
         ctrl_straight = wire_control_point(top, right, center=None, curvature=0.25)
