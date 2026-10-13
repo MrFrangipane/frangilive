@@ -20,7 +20,9 @@ class JsonDeviceRepository(DeviceRepository):
             instruments.append(AudioInstrument(
                 name=inst_data["name"],
                 inputs=inputs,
-                outputs=outputs
+                outputs=outputs,
+                default_input_name=inst_data.get("default_input"),
+                default_output_name=inst_data.get("default_output")
             ))
 
         return DeviceLibrary(name=data["name"], audio_instruments=instruments)

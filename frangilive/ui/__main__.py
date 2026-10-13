@@ -16,7 +16,7 @@ else:
     from frangilive.audio.infrastructure.mock_audio_system import MockAudioSystem
     audio_system = MockAudioSystem()
 
-from frangilive.ui.patcher.patcher import PatcherWidget
+from frangilive.ui.patcher.patcher_widget import PatcherWidget
 
 
 if __name__ == "__main__":
