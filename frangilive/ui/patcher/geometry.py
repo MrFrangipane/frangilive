@@ -66,7 +66,8 @@ def wire_control_point(
         curvature_offset: float = 0.12,
 ) -> QPointF:
     """
-    Calculates the Bezier control point for a wire curved towards center.
+    Calculates the Bezier control point for a wire curved inwards for clockwise
+    connections and outwards for counterclockwise connections.
     If center is None or curvature == 0, returns the straight midpoint.
     """
     mid = QPointF((start.x() + end.x()) / 2.0, (start.y() + end.y()) / 2.0)
@@ -85,6 +86,12 @@ def wire_control_point(
 
     effective_curvature = curvature + offset_idx * curvature_offset
 
+    # Cross product of (start - center) x (end - center) = dx * vy - dy * vx
+    # In screen coordinates (y-down):
+    # cross > 0: clockwise -> curve inwards (towards center)
+    # cross < 0: counterclockwise -> curve outwards (away from center)
+    cross = dx * vy - dy * vx
+
     # Perpendicular normal (pointing towards center if center is offset)
     nx = -dy / chord_len
     ny = dx / chord_len
@@ -93,9 +100,14 @@ def wire_control_point(
         ny = -ny
 
     if dist_to_center > 1.0:
-        # Move midpoint towards center
-        ctrl_x = mid.x() + vx * effective_curvature
-        ctrl_y = mid.y() + vy * effective_curvature
+        if cross < 0:
+            # Counterclockwise: curve outwards (away from center)
+            ctrl_x = mid.x() - vx * effective_curvature
+            ctrl_y = mid.y() - vy * effective_curvature
+        else:
+            # Clockwise (or cross >= 0): curve inwards (towards center)
+            ctrl_x = mid.x() + vx * effective_curvature
+            ctrl_y = mid.y() + vy * effective_curvature
     else:
         # Opposite nodes passing through center: curve along perpendicular normal
         curve_dist = effective_curvature * chord_len * 0.25
@@ -175,8 +187,9 @@ def trimmed_curved_path_between_shapes(
         curvature_offset: float = 0.12,
 ) -> QPainterPath:
     """
-    Builds a QPainterPath from start_center to end_point, curved toward center
-    and trimmed so it begins at start_shape boundary and ends at end_shape boundary.
+    Builds a QPainterPath from start_center to end_point, curved inwards for clockwise
+    and outwards for counterclockwise connections, and trimmed so it begins at
+    start_shape boundary and ends at end_shape boundary.
     """
     ctrl = wire_control_point(
         start=start_center,

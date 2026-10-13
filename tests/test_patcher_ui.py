@@ -336,38 +336,75 @@ class TestPatcherUI(unittest.TestCase):
         widget._handle_move(QPointF(press_pos.x() + 60, press_pos.y()))
         self.assertTrue(widget._is_dragging)
 
-    def test_wires_curved_toward_center(self):
+    def test_wires_curvature_clockwise_inwards_counterclockwise_outwards(self):
         import math
-        from frangilive.ui.patcher.geometry import path_midpoint
+        from frangilive.ui.patcher.geometry import path_midpoint, wire_control_point
 
-        # Connect Digitakt and MF-101 (or adjacent / non-colinear devices)
-        self.app.connect("Digitakt", "Main LR", "MF-101", "Main L")
-        conn = self.app.patcher.connections[0]
-
-        rects = self.widget._calculate_node_rects()
-        src_center = rects["Digitakt"].center()
-        tgt_center = rects["MF-101"].center()
-
-        straight_mid_x = (src_center.x() + tgt_center.x()) / 2.0
-        straight_mid_y = (src_center.y() + tgt_center.y()) / 2.0
         widget_center = QPointF(self.widget.width() / 2.0, self.widget.height() / 2.0)
+        rects = self.widget._calculate_node_rects()
 
-        dist_straight_to_center = math.hypot(
-            straight_mid_x - widget_center.x(),
-            straight_mid_y - widget_center.y(),
-        )
+        # 1. Clockwise connection: Microphone (top, index 0) -> MF-101 (index 2)
+        self.app.connect("Microphone", "Out", "MF-101", "Main L")
+        conn_cw = self.app.patcher.connections[-1]
 
-        curved_path = self.widget._connection_path(conn)
-        self.assertFalse(curved_path.isEmpty())
+        src_cw = rects["Microphone"].center()
+        tgt_cw = rects["MF-101"].center()
+        mid_cw_x = (src_cw.x() + tgt_cw.x()) / 2.0
+        mid_cw_y = (src_cw.y() + tgt_cw.y()) / 2.0
+        dist_straight_cw = math.hypot(mid_cw_x - widget_center.x(), mid_cw_y - widget_center.y())
 
-        curve_mid = path_midpoint(curved_path)
-        dist_curve_to_center = math.hypot(
-            curve_mid.x() - widget_center.x(),
-            curve_mid.y() - widget_center.y(),
-        )
+        curved_path_cw = self.widget._connection_path(conn_cw)
+        self.assertFalse(curved_path_cw.isEmpty())
+        curve_mid_cw = path_midpoint(curved_path_cw)
+        dist_curve_cw = math.hypot(curve_mid_cw.x() - widget_center.x(), curve_mid_cw.y() - widget_center.y())
 
-        # Midpoint of curved path must be closer to widget center than straight chord midpoint
-        self.assertLess(dist_curve_to_center, dist_straight_to_center)
+        # Clockwise connection must curve INWARDS (closer to center)
+        self.assertLess(dist_curve_cw, dist_straight_cw)
+
+        # 2. Counterclockwise connection: Digitakt (index 4) -> MF-101 (index 2)
+        self.app.connect("Digitakt", "Main LR", "MF-101", "Main L")
+        conn_ccw = self.app.patcher.connections[-1]
+
+        src_ccw = rects["Digitakt"].center()
+        tgt_ccw = rects["MF-101"].center()
+        mid_ccw_x = (src_ccw.x() + tgt_ccw.x()) / 2.0
+        mid_ccw_y = (src_ccw.y() + tgt_ccw.y()) / 2.0
+        dist_straight_ccw = math.hypot(mid_ccw_x - widget_center.x(), mid_ccw_y - widget_center.y())
+
+        curved_path_ccw = self.widget._connection_path(conn_ccw)
+        self.assertFalse(curved_path_ccw.isEmpty())
+        curve_mid_ccw = path_midpoint(curved_path_ccw)
+        dist_curve_ccw = math.hypot(curve_mid_ccw.x() - widget_center.x(), curve_mid_ccw.y() - widget_center.y())
+
+        # Counterclockwise connection must curve OUTWARDS (farther from center)
+        self.assertGreater(dist_curve_ccw, dist_straight_ccw)
+
+    def test_wire_control_point_geometry(self):
+        import math
+        from frangilive.ui.patcher.geometry import wire_control_point
+
+        center = QPointF(200.0, 200.0)
+        top = QPointF(200.0, 100.0)    # 12 o'clock
+        right = QPointF(300.0, 200.0)  # 3 o'clock
+
+        straight_mid = QPointF((top.x() + right.x()) / 2.0, (top.y() + right.y()) / 2.0)
+        dist_straight = math.hypot(straight_mid.x() - center.x(), straight_mid.y() - center.y())
+
+        # Clockwise: top -> right
+        ctrl_cw = wire_control_point(top, right, center=center, curvature=0.25)
+        dist_cw = math.hypot(ctrl_cw.x() - center.x(), ctrl_cw.y() - center.y())
+        self.assertLess(dist_cw, dist_straight)  # Inwards
+
+        # Counterclockwise: right -> top
+        ctrl_ccw = wire_control_point(right, top, center=center, curvature=0.25)
+        dist_ccw = math.hypot(ctrl_ccw.x() - center.x(), ctrl_ccw.y() - center.y())
+        self.assertGreater(dist_ccw, dist_straight)  # Outwards
+
+        # Center None or curvature 0 -> straight midpoint
+        ctrl_straight = wire_control_point(top, right, center=None, curvature=0.25)
+        self.assertEqual(ctrl_straight, straight_mid)
+        ctrl_zero_curv = wire_control_point(top, right, center=center, curvature=0.0)
+        self.assertEqual(ctrl_zero_curv, straight_mid)
 
     def test_multiple_connections_between_same_devices_distinct_curves(self):
         self.app.connect("Digitakt", "Track 1", "Main LR", "Main LR")
@@ -455,6 +492,80 @@ class TestPatcherUI(unittest.TestCase):
         )
 
         self.assertFalse(rect1.intersects(rect2), "Crossing connection labels must not overlap")
+
+    def test_hover_target_timer_resets_on_movement(self):
+        rects = self.widget._calculate_node_rects()
+        digitakt_rect = rects["Digitakt"]
+        main_lr_rect = rects["Main LR"]
+
+        digitakt = self.app.device_library.get_instrument("Digitakt")
+        main_lr = self.app.device_library.get_instrument("Main LR")
+
+        # 1. Start drag from Digitakt
+        press_pos = digitakt_rect.center()
+        self.widget._handle_press(press_pos)
+        self.widget._handle_move(QPointF(press_pos.x() + 30, press_pos.y() + 30))
+        self.assertTrue(self.widget._is_dragging)
+
+        # 2. Hover over Main LR (target device with inputs)
+        hover_pos1 = main_lr_rect.center()
+        self.widget._handle_move(hover_pos1)
+        self.assertEqual(self.widget._hover_target_device, main_lr)
+        self.assertTrue(self.widget._hover_long_press_timer.isActive())
+
+        # 3. Moving within Main LR resets the timer so it only counts if stationary
+        hover_pos2 = QPointF(hover_pos1.x() + 5, hover_pos1.y() + 5)
+        self.widget._handle_move(hover_pos2)
+        self.assertEqual(self.widget._hover_target_device, main_lr)
+        self.assertTrue(self.widget._hover_long_press_timer.isActive())
+
+        # 4. Moving off target stops timer
+        off_pos = QPointF(0, 0)
+        self.widget._handle_move(off_pos)
+        self.assertIsNone(self.widget._hover_target_device)
+        self.assertFalse(self.widget._hover_long_press_timer.isActive())
+
+    def test_start_device_long_press_single_output_bypasses_dialog(self):
+        mic = self.app.device_library.get_instrument("Microphone")
+        self.assertEqual(len(mic.outputs), 1)
+
+        self.widget._press_device = mic
+        self.widget._press_pos = QPointF(100, 100)
+
+        # Trigger long press
+        self.widget._on_start_device_long_press()
+
+        self.assertTrue(self.widget._is_dragging)
+        self.assertEqual(self.widget._drag_source_device, mic)
+        self.assertEqual(self.widget._drag_source_port, "Out")
+        self.assertEqual(self.widget._current_drag_pos, QPointF(100, 100))
+
+    def test_hover_target_long_press_single_input_bypasses_dialog(self):
+        mic = self.app.device_library.get_instrument("Microphone")
+        mf101 = self.app.device_library.get_instrument("MF-101")
+        self.assertEqual(len(mf101.inputs), 1)
+
+        self.widget._is_dragging = True
+        self.widget._drag_source_device = mic
+        self.widget._drag_source_port = "Out"
+        self.widget._hover_target_device = mf101
+
+        # Trigger hover long press
+        self.widget._on_hover_long_press()
+
+        # Should be connected directly without dialog
+        self.assertFalse(self.widget._is_dragging)
+        conns = self.app.patcher.get_connections_between("Microphone", "MF-101")
+        self.assertEqual(len(conns), 1)
+        self.assertEqual(conns[0].source_port.name, "Out")
+        self.assertEqual(conns[0].target_port.name, "Main L")
+
+    def test_select_default_port_single_port_bypasses_dialog(self):
+        mic = self.app.device_library.get_instrument("Microphone")
+        self.assertEqual(len(mic.outputs), 1)
+        # Calling _select_default_port with single output doesn't block or prompt
+        self.widget._select_default_port(mic, is_output=True)
+        self.assertEqual(mic.get_default_output().name, "Out")
 
 
 if __name__ == "__main__":

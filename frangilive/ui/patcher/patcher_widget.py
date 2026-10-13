@@ -285,9 +285,8 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
             target_device = self._get_device_at_pos(pos)
 
             if target_device and target_device != self._drag_source_device and target_device.inputs:
-                if target_device != self._hover_target_device:
-                    self._hover_target_device = target_device
-                    self._hover_long_press_timer.start()
+                self._hover_target_device = target_device
+                self._hover_long_press_timer.start()
             else:
                 self._hover_target_device = None
                 self._hover_long_press_timer.stop()
@@ -345,6 +344,14 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
         device = self._press_device
 
         if device.outputs:
+            if len(device.outputs) == 1:
+                self._drag_source_device = device
+                self._drag_source_port = device.outputs[0].name
+                self._is_dragging = True
+                self._current_drag_pos = self._press_pos
+                self.update()
+                return
+
             port_names = [p.name for p in device.outputs]
             default_out = device.get_default_output()
             current_default = default_out.name if default_out else None
@@ -379,6 +386,16 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
         source_port = self._drag_source_port
 
         if not target_device.inputs or not source_port:
+            self._cancel_drag()
+            return
+
+        if len(target_device.inputs) == 1:
+            self._connect_devices(
+                source_device,
+                source_port,
+                target_device,
+                target_device.inputs[0].name,
+            )
             self._cancel_drag()
             return
 
@@ -428,7 +445,7 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
 
         menu.addSection(f"{device.name} Ports")
 
-        if device.outputs:
+        if len(device.outputs) > 1:
             default_output = device.get_default_output()
             output_name = default_output.name if default_output else "None"
             out_action = menu.addAction(f"Select Default Output ({output_name})")
@@ -436,7 +453,7 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
                 lambda: self._select_default_port(device, is_output=True)
             )
 
-        if device.inputs:
+        if len(device.inputs) > 1:
             default_input = device.get_default_input()
             input_name = default_input.name if default_input else "None"
             in_action = menu.addAction(f"Select Default Input ({input_name})")
@@ -463,6 +480,14 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
 
     def _select_default_port(self, device: AudioInstrument, is_output: bool):
         port_list = device.outputs if is_output else device.inputs
+        if len(port_list) <= 1:
+            if len(port_list) == 1:
+                if is_output:
+                    device.set_default_output(port_list[0].name)
+                else:
+                    device.set_default_input(port_list[0].name)
+            return
+
         default_port = device.get_default_output() if is_output else device.get_default_input()
         dialog = PortSelectorDialog(
             instrument_name=device.name,
