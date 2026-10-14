@@ -268,14 +268,16 @@ def find_non_overlapping_label_rect(
         total_pair_conns: int = 1,
         existing_rects: list[QRectF] | None = None,
         obstacle_rects: list[QRectF] | None = None,
+        obstacle_paths: list[QPainterPath] | None = None,
         padding: float = 3.0,
 ) -> QRectF:
     """
-    Finds a badge position along the path that does not overlap with existing label rects
-    or obstacle rects (such as device nodes).
+    Finds a badge position along the path that does not overlap with existing label rects,
+    obstacle rects (such as device nodes), or other cable paths.
     """
     existing = existing_rects or []
     obstacles = obstacle_rects or []
+    other_paths = obstacle_paths or []
 
     if total_pair_conns <= 1:
         preferred_t = 0.54
@@ -299,8 +301,12 @@ def find_non_overlapping_label_rect(
 
         overlaps_existing = any(padded_rect.intersects(other) for other in existing)
         overlaps_obstacle = any(rect.intersects(obs) for obs in obstacles)
+        
+        rect_path = QPainterPath()
+        rect_path.addRect(rect)
+        overlaps_path = any(other.intersects(rect_path) for other in other_paths)
 
-        if not overlaps_existing and not overlaps_obstacle:
+        if not overlaps_existing and not overlaps_obstacle and not overlaps_path:
             return rect
 
         penalty = 0.0
@@ -314,6 +320,10 @@ def find_non_overlapping_label_rect(
                 inter = rect.intersected(obs)
                 if not inter.isEmpty():
                     penalty += inter.width() * inter.height() * 10.0
+        if overlaps_path:
+            # Check how much the path intersects if possible, but for simplicity:
+            penalty += 1000.0
+
         penalty += abs(cand - preferred_t) * 50.0
 
         if penalty < min_penalty:

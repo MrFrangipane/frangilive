@@ -73,6 +73,15 @@ class PatcherPainterMixin:
 
         src_inst = connections[0].source_instrument
         tgt_inst = connections[0].target_instrument
+
+        # If there's only one connection, and it's a default->default connection, skip the label
+        if len(connections) == 1:
+            c = connections[0]
+            is_src_default = c.source_port == c.source_instrument.get_default_output()
+            is_tgt_default = c.target_port == c.target_instrument.get_default_input()
+            if is_src_default and is_tgt_default:
+                return ""
+
         src_has_multiple = len(src_inst.outputs) > 1
         tgt_has_multiple = len(tgt_inst.inputs) > 1
 
@@ -84,9 +93,9 @@ class PatcherPainterMixin:
             if src_has_multiple and tgt_has_multiple:
                 return f"{conn.source_port.name} → {conn.target_port.name}"
             elif src_has_multiple:
-                return conn.source_port.name
+                return f"{conn.source_port.name} →"
             else:
-                return conn.target_port.name
+                return f"→ {conn.target_port.name}"
 
         src_ports = [c.source_port.name for c in connections]
         tgt_ports = [c.target_port.name for c in connections]
@@ -151,16 +160,16 @@ class PatcherPainterMixin:
 
         if src_has_multiple and not tgt_has_multiple:
             if ("," not in src_summary or len(src_ports) <= 2) or "–" in src_summary or "/" in src_summary:
-                return src_summary
+                return f"{src_summary} →"
             if len(connections) <= 3:
-                return "\n".join(c.source_port.name for c in connections)
+                return "\n".join(f"{c.source_port.name} →" for c in connections)
             return f"{len(connections)} Cables"
 
         if not src_has_multiple and tgt_has_multiple:
             if ("," not in tgt_summary or len(tgt_ports) <= 2) or "–" in tgt_summary or "/" in tgt_summary:
-                return tgt_summary
+                return f"→ {tgt_summary}"
             if len(connections) <= 3:
-                return "\n".join(c.target_port.name for c in connections)
+                return "\n".join(f"→ {c.target_port.name}" for c in connections)
             return f"{len(connections)} Cables"
 
         if all(tp == tgt_ports[0] for tp in tgt_ports):
@@ -193,7 +202,7 @@ class PatcherPainterMixin:
 
         placed_label_rects: list[QRectF] = []
         obstacle_rects: list[QRectF] = list(node_rects.values())
-
+        all_cable_paths: list[QPainterPath] = []
         pair_bundles = []
 
         for pair, conns in pair_connections.items():
@@ -203,6 +212,7 @@ class PatcherPainterMixin:
                 if cable_path.isEmpty():
                     continue
 
+                all_cable_paths.append(cable_path)
                 cable_color = (
                     QColor(self._config.primary_cable_color)
                     if offset_idx == 0
@@ -235,18 +245,33 @@ class PatcherPainterMixin:
                 pair_bundles.append({
                     "path": anchor_path,
                     "label": combined_label,
-                    "total_pair_conns": len(conns),
+                    "bundle_paths": [item["path"] for item in cable_items],
                 })
 
+        # Spreading identical labels and avoiding cable crossings
+        text_totals = {}
+        for b in pair_bundles:
+            text_totals[b["label"]] = text_totals.get(b["label"], 0) + 1
+
+        text_counts = {}
         for bundle in pair_bundles:
+            label_text = bundle["label"]
+            occurrence = text_counts.get(label_text, 0)
+            text_counts[label_text] = occurrence + 1
+
+            # Obstacles are all cables except those in this bundle
+            bundle_paths_ids = {id(p) for p in bundle["bundle_paths"]}
+            other_cables = [p for p in all_cable_paths if id(p) not in bundle_paths_ids]
+
             self._draw_wire_label(
                 painter,
                 path=bundle["path"],
-                label=bundle["label"],
-                offset_idx=0,
-                total_pair_conns=1,
+                label=label_text,
+                offset_idx=occurrence,
+                total_pair_conns=text_totals[label_text],
                 existing_rects=placed_label_rects,
                 obstacle_rects=obstacle_rects,
+                obstacle_paths=other_cables,
             )
 
     def _draw_drag_arrow(self, painter: QPainter, node_rects: dict[str, QRectF]):
@@ -327,6 +352,7 @@ class PatcherPainterMixin:
             total_pair_conns: int = 1,
             existing_rects: list[QRectF] | None = None,
             obstacle_rects: list[QRectF] | None = None,
+            obstacle_paths: list[QPainterPath] | None = None,
     ):
         """Draws a readable label badge on the path, positioned to avoid overlaps."""
         font = QFont(painter.font())
@@ -348,6 +374,7 @@ class PatcherPainterMixin:
             total_pair_conns=total_pair_conns,
             existing_rects=existing_rects,
             obstacle_rects=obstacle_rects,
+            obstacle_paths=obstacle_paths,
             padding=self._config.wire_label_padding,
         )
 
