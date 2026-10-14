@@ -33,18 +33,19 @@ class PatcherPainterMixin:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.TextAntialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
         painter.fillRect(self.rect(), QColor(self._config.background_color))
 
         node_rects = self._calculate_node_rects()
 
         self._draw_background_circle(painter)
+        self._draw_device_nodes(painter, node_rects)
+
         self._draw_connection_arrows(painter, node_rects)
 
         if self._is_dragging and self._drag_source_device:
             self._draw_drag_arrow(painter, node_rects)
-
-        self._draw_device_nodes(painter, node_rects)
 
         painter.end()
 
@@ -185,7 +186,9 @@ class PatcherPainterMixin:
             tgt_name = conn.target_instrument.name
             if src_name not in node_rects or tgt_name not in node_rects:
                 continue
-            pair = (src_name, tgt_name)
+            # Use undirected pair to group connections that would otherwise overlap
+            # (e.g. A->B and B->A will have different curvatures)
+            pair = tuple(sorted((src_name, tgt_name)))
             pair_connections.setdefault(pair, []).append(conn)
 
         placed_label_rects: list[QRectF] = []
@@ -285,6 +288,7 @@ class PatcherPainterMixin:
         angle = path_end_tangent_angle(path)
         p_end = path.pointAtPercent(1.0)
 
+        # 2. Draw Wire
         pen = QPen(color)
         pen.setWidthF(line_width)
         pen.setCapStyle(Qt.RoundCap)
@@ -295,6 +299,7 @@ class PatcherPainterMixin:
         painter.setBrush(Qt.NoBrush)
         painter.drawPath(path)
 
+        # 3. Draw Arrow Head
         head_angle = math.pi / self._config.arrow_head_angle_divisor
         p_wing1 = QPointF(
             p_end.x() - arrow_size * math.cos(angle - head_angle),
@@ -366,7 +371,7 @@ class PatcherPainterMixin:
         painter.drawText(badge_rect, Qt.AlignCenter, label)
 
     def _draw_device_nodes(self, painter: QPainter, node_rects: dict[str, QRectF]):
-        """Draws each audio instrument node with title, default ports, and status highlights."""
+        """Draws each audio instrument node with title, icon, and status highlights."""
         for instrument in self._device_library.audio_instruments:
             rect = node_rects.get(instrument.name)
             if not rect:
@@ -424,6 +429,7 @@ class PatcherPainterMixin:
             font.setPointSize(self._config.node_name_font_size)
             painter.setFont(font)
 
+            icon = self._icons.get(instrument.name)
             name_rect = QRectF(
                 rect.x() + self._config.node_name_rect_x_padding,
                 rect.y() + self._config.node_name_rect_y_padding,
@@ -432,32 +438,12 @@ class PatcherPainterMixin:
             )
             painter.drawText(name_rect, Qt.AlignCenter, instrument.name)
 
-            font.setBold(False)
-            font.setPointSize(self._config.node_port_font_size)
-            painter.setFont(font)
-
-            def_out = instrument.get_default_output()
-            def_in = instrument.get_default_input()
-
-            port_info = []
-            if def_out:
-                port_info.append(f"Out: {def_out.name}")
-            if def_in:
-                port_info.append(f"In: {def_in.name}")
-
-            port_text = " | ".join(port_info) if port_info else "No ports"
-
-            painter.setPen(
-                QColor(
-                    self._config.node_output_port_color
-                    if def_out
-                    else self._config.node_no_output_port_color
+            if icon:
+                icon_size = self._config.node_icon_size * self._config.node_icon_scale
+                icon_rect = QRectF(
+                    rect.x() + (rect.width() - icon_size) / 2.0,
+                    name_rect.bottom() + self._config.node_icon_padding,
+                    icon_size,
+                    icon_size,
                 )
-            )
-            port_rect = QRectF(
-                rect.x() + self._config.node_port_rect_x_padding,
-                rect.y() + self._config.node_port_rect_y,
-                rect.width() - (2 * self._config.node_port_rect_x_padding),
-                self._config.node_port_rect_height,
-            )
-            painter.drawText(port_rect, Qt.AlignCenter, port_text)
+                painter.drawImage(icon_rect, icon)

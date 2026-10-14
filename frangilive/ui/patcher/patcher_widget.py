@@ -1,8 +1,9 @@
 import math
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QKeyEvent, QMouseEvent, QPainterPath
+from PySide6.QtGui import QKeyEvent, QMouseEvent, QPainterPath, QImage
 from PySide6.QtWidgets import QMenu, QWidget
+from importlib.resources import files, as_file
 
 from frangilive.app import FrangiliveApp
 from frangilive.devices.domain.audio_instrument import AudioInstrument
@@ -67,6 +68,24 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
 
         # Cached device node bounding rects: dict[str, QRectF]
         self._node_rects: dict[str, QRectF] = {}
+
+        # Icon cache
+        self._icons: dict[str, QImage] = {}
+        self._load_icons()
+
+    def _load_icons(self):
+        """Loads all icons from resources into the cache."""
+        icons_resource = files("frangilive.resources.icons")
+        for instrument in self._device_library.audio_instruments:
+            if instrument.icon_name:
+                try:
+                    icon_path = icons_resource.joinpath(instrument.icon_name)
+                    with as_file(icon_path) as p:
+                        image = QImage(str(p))
+                        if not image.isNull():
+                            self._icons[instrument.name] = image
+                except Exception as e:
+                    print(f"Failed to load icon {instrument.icon_name} for {instrument.name}: {e}")
 
     @property
     def config(self) -> PatcherWidgetConfig:
@@ -167,9 +186,10 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
     ) -> AudioConnection | None:
         """Finds an existing connection arrow near pos."""
         hit_threshold = threshold if threshold is not None else self._config.connection_hit_threshold
+        # Grouping logic must match painter._draw_connection_arrows to ensure correct hit-testing
         drawn_pairs: dict[tuple[str, str], int] = {}
         for conn in self._patcher.connections:
-            pair = (conn.source_instrument.name, conn.target_instrument.name)
+            pair = tuple(sorted((conn.source_instrument.name, conn.target_instrument.name)))
             offset_idx = drawn_pairs.get(pair, 0)
             drawn_pairs[pair] = offset_idx + 1
 

@@ -5,3 +5,7 @@ __pycache__/
 .uv/
 dist/
 *.egg-info/
+.junie
+.idea
+cues.json
+frangilive/resources/icons

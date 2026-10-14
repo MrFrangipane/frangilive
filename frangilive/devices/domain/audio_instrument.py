@@ -9,6 +9,7 @@ class AudioInstrument:
     outputs: list[AudioPort] = field(default_factory=list)
     default_input_name: str | None = None
     default_output_name: str | None = None
+    icon_name: str | None = None
 
     def _get_port(self, ports: list[AudioPort], name: str, port_type: str) -> AudioPort:
         for port in ports:

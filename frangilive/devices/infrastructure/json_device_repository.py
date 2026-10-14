@@ -21,8 +21,9 @@ class JsonDeviceRepository(DeviceRepository):
                 name=inst_data["name"],
                 inputs=inputs,
                 outputs=outputs,
-                default_input_name=inst_data.get("default_input"),
-                default_output_name=inst_data.get("default_output")
+                default_input_name=inst_data.get("default_input_name"),
+                default_output_name=inst_data.get("default_output_name"),
+                icon_name=inst_data.get("icon_name")
             ))
 
         return DeviceLibrary(name=data["name"], audio_instruments=instruments)

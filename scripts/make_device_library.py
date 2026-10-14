@@ -15,13 +15,15 @@ if __name__ == "__main__":
                 name="Microphone",
                 outputs=[
                     AudioPort("Out", "system:capture_1"),
-                ]
+                ],
+                icon_name="microphone.png"
             ),
             AudioInstrument(
                 name="Main LR",
                 inputs=[
                     AudioPort("Main LR", "system:playback_1", "system:playback_2"),
-                ]
+                ],
+                icon_name="main_lr.png"
             ),
             AudioInstrument(
                 name="MF-101",
@@ -30,7 +32,8 @@ if __name__ == "__main__":
                 ],
                 outputs=[
                     AudioPort("Main L", "system:capture_2"),
-                ]
+                ],
+                icon_name="mf-101.png"
             ),
             AudioInstrument(
                 name="MuRF",
@@ -39,7 +42,8 @@ if __name__ == "__main__":
                 ],
                 outputs=[
                     AudioPort("Main LR", "system:capture_3", "system:capture_4"),
-                ]
+                ],
+                icon_name="murf.png"
             ),
             AudioInstrument(
                 name="Digitakt",
@@ -53,7 +57,8 @@ if __name__ == "__main__":
                     AudioPort("Track 6", "Digitakt:Track 6"),
                     AudioPort("Track 7", "Digitakt:Track 7"),
                     AudioPort("Track 8", "Digitakt:Track 8"),
-                ]
+                ],
+                icon_name="digitakt.png"
             ),
             AudioInstrument(
                 name="Syntakt",
@@ -71,7 +76,8 @@ if __name__ == "__main__":
                     AudioPort("Track 10", "Syntakt:Track 10"),
                     AudioPort("Track 11", "Syntakt:Track 11"),
                     AudioPort("Track 12", "Syntakt:Track 12"),
-                ]
+                ],
+                icon_name="syntakt.png"
             ),
             AudioInstrument(
                 name="Digitone",
@@ -81,7 +87,8 @@ if __name__ == "__main__":
                     AudioPort("Track 2", "Digitone:Track 2"),
                     AudioPort("Track 3", "Digitone:Track 3"),
                     AudioPort("Track 4", "Digitone:Track 4"),
-                ]
+                ],
+                icon_name="digitone.png"
             ),
             AudioInstrument(
                 name="Time Factor",
@@ -90,7 +97,8 @@ if __name__ == "__main__":
                 ],
                 outputs=[
                     AudioPort("Main LR", "system:capture_7", "system:capture_8")
-                ]
+                ],
+                icon_name="time_factor.png"
             ),
             AudioInstrument(
                 name="Big Sky",
@@ -99,7 +107,8 @@ if __name__ == "__main__":
                 ],
                 outputs=[
                     AudioPort("Main LR", "system:capture_5", "system:capture_6")
-                ]
+                ],
+                icon_name="big_sky.png"
             )
         ]
     )

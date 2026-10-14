@@ -6,21 +6,21 @@ class PatcherWidgetConfig:
     long_press_interval: int = 400
     hover_long_press_interval: int = 500
 
-    node_width: float = 130.0
-    node_height: float = 54.0
-    node_margin_padding: float = 30.0
+    node_width: float = 120.0
+    node_height: float = 110.0
+    node_margin_padding: float = 24.0
     min_layout_radius: float = 80.0
     node_touch_padding: float = 10.0
     drag_threshold: float = 12.0
     connection_hit_threshold: float = 14.0
-
+    
     wire_curvature: float = 0.22
     wire_curvature_offset: float = 0.12
-
+    
     background_color: str = "#1E2227"
     background_circle_color: tuple[int, int, int, int] = (45, 52, 64, 120)
     background_circle_width: int = 2
-
+    
     primary_cable_color: str = "#38DE7A"
     secondary_cable_color: str = "#61AFEF"
     drag_cable_color: str = "#E5C07B"
@@ -29,9 +29,9 @@ class PatcherWidgetConfig:
     connection_arrow_size: float = 13.0
     drag_line_width: float = 3.5
     drag_arrow_size: float = 15.0
-
+    
     arrow_head_angle_divisor: float = 7.0
-
+    
     wire_label_font_size: int = 9
     wire_label_horizontal_padding: int = 14
     wire_label_vertical_padding: int = 6
@@ -41,7 +41,7 @@ class PatcherWidgetConfig:
     wire_label_text_color: str = "#ECEFF4"
     wire_label_radius: float = 6.0
     wire_label_padding: float = 3.0
-
+    
     node_background_color: str = "#282C34"
     node_border_color: str = "#4B5263"
     node_border_width: float = 1.5
@@ -60,16 +60,19 @@ class PatcherWidgetConfig:
     node_pressed_background_color: str = "#2C313A"
     node_connected_border_color: str = "#528BFF"
     node_connected_border_width: float = 2.0
-
+    
     node_active_text_color: str = "#FFFFFF"
     node_text_color: str = "#E5E9F0"
     node_name_font_size: int = 11
     node_port_font_size: int = 8
-    node_name_rect_x_padding: float = 6.0
-    node_name_rect_y_padding: float = 6.0
-    node_name_rect_height: float = 22.0
+    node_icon_size: float = 32.0
+    node_icon_scale: float = 2.0
+    node_icon_padding: float = 6.0
+    node_name_rect_x_padding: float = 4.0
+    node_name_rect_y_padding: float = 8.0
+    node_name_rect_height: float = 20.0
     node_port_rect_x_padding: float = 4.0
-    node_port_rect_y: float = 28.0
+    node_port_rect_y: float = 34.0
     node_port_rect_height: float = 20.0
     node_output_port_color: str = "#98C379"
     node_no_output_port_color: str = "#ABB2BF"
