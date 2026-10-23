@@ -4,6 +4,16 @@ Frangilive live setup controller.
 
 ## Setup & Running with UV
 
+Add `jack_control` to visudo
+
+````bash
+sudo visudo
+````
+
+````text
+frangi ALL=(root) NOPASSWD: /usr/bin/jack_control
+````
+
 ### Development Setup (Windows / Mock Mode)
 Install core dependencies for local development:
 ```bash
