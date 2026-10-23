@@ -12,7 +12,7 @@ from frangilive.audio.interfaces.audio_router import AudioRouterGateway
 from frangilive.audio.interfaces.audio_engine import AudioEngineGateway
 
 _logger = logging.getLogger(__name__)
-_RE = re.compile(r'card ([0-9]+)[^\[]+\[([^\]]+)')
+_APLAY_CARD_RE = re.compile(r"^card\s+(\d+):\s+([^\s]+)\s+\[([^\]]+)\]", re.MULTILINE)
 
 
 class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
@@ -20,6 +20,28 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
         self._jack_client: jack.Client | None = None if jack else None
         self._hardware_name: str | None = None
         self._jack_control_command = ["jack_control"]
+
+    def _detect_hardware_name(self, interface_name: str) -> str:
+        output = subprocess.check_output(["aplay", "-l"], text=True)
+
+        for card_number, card_id, card_label in _APLAY_CARD_RE.findall(output):
+            if (
+                    interface_name.lower() in card_id.lower()
+                    or interface_name.lower() in card_label.lower()
+            ):
+                hardware_name = f"hw:{card_number}"
+                _logger.info(
+                    "Detected audio interface '%s' as %s: %s [%s]",
+                    interface_name,
+                    hardware_name,
+                    card_id,
+                    card_label,
+                )
+                return hardware_name
+
+        raise RuntimeError(
+            f"Could not detect audio interface '{interface_name}' in aplay -l output:\n{output}"
+        )
 
     def _run_jack_control(self, *args: str) -> bytes:
         try:
@@ -40,30 +62,19 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
         if jack is None:
             raise ImportError("jack-client package is required for JackAudioRouter")
 
-        # Find the hardware name
         _logger.info(f"Detecting audio interface '{interface_name}'...")
-        try:
-            output = subprocess.check_output(["aplay", "-l"]).decode()
-            for result in _RE.findall(output):
-                number_listed, name_listed = result
-                if interface_name.lower() in name_listed.lower():
-                    self._hardware_name = f"hw:{number_listed}"
-                    break
-        except Exception as e:
-            _logger.warning(f"Failed to run aplay: {e}")
-
-        if not self._hardware_name:
-            _logger.warning(f"Could not detect '{interface_name}' hardware name, using default 'hw:0'")
-            self._hardware_name = "hw:0"
+        self._hardware_name = self._detect_hardware_name(interface_name)
 
         # Start server
         _logger.info("Starting JACK server...")
         periods_per_buffer = 2 if connection_type == "PCI" else 3
         try:
+            self._run_jack_control("stop")
             self._run_jack_control("ds", driver)
             self._run_jack_control("dps", "device", self._hardware_name)
             self._run_jack_control("dps", "period", str(buffer_size))
             self._run_jack_control("dps", "nperiods", str(periods_per_buffer))
+            self._run_jack_control("dps", "rate", "48000")
             self._run_jack_control("start")
         except Exception as e:
             _logger.error(f"Failed to start JACK server via jack_control: {e}")
