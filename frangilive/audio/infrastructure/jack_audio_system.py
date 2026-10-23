@@ -19,7 +19,7 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
     def __init__(self):
         self._jack_client: jack.Client | None = None if jack else None
         self._hardware_name: str | None = None
-        self._jack_control_command = ["sudo", "-n", "jack_control"]
+        self._jack_control_command = ["jack_control"]
 
     def _run_jack_control(self, *args: str) -> bytes:
         try:
