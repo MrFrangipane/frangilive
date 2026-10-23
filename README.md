@@ -11,7 +11,13 @@ uv sync
 ```
 
 ### Hardware Deployment (Linux / Raspberry Pi)
+
 Install full dependencies including JACK and MIDI hardware drivers:
+
+```bash
+source ./install.sh
+```
+
 ```bash
 uv sync --extra pi
 ```
