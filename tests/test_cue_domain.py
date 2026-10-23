@@ -370,6 +370,50 @@ class TestCueDomainAndApplication(unittest.TestCase):
             AudioConnection.from_snapshot(invalid_port_snap, self.library)
         self.assertIn("Output port 'NonExistentPort' not found", str(ctx.exception))
 
+    def test_cue_transition_differential_routing_no_router_reset(self):
+        # Setup: Create connections
+        # conn1: SynthA:Out1 -> EffectB:In1 (sys:out1 -> sys:in2)
+        # conn2: EffectB:Out1 -> MasterC:In1 (sys:out3 -> sys:in4)
+        # conn3: SynthA:Out2 -> EffectB:In2 (sys:out2 -> sys:in3)
+        conn1 = AudioConnection(self.inst_a, self.inst_a.outputs[0], self.inst_b, self.inst_b.inputs[0])
+        conn2 = AudioConnection(self.inst_b, self.inst_b.outputs[0], self.inst_c, self.inst_c.inputs[0])
+        conn3 = AudioConnection(self.inst_a, self.inst_a.outputs[1], self.inst_b, self.inst_b.inputs[1])
+
+        # Cue 1 has conn1 and conn2
+        cue1 = self.cue_list.create_cue_from_connections([conn1, conn2], name="Cue 1")
+        # Cue 2 has conn1 and conn3 (conn1 is shared, conn2 is removed, conn3 is added)
+        cue2 = self.cue_list.create_cue_from_connections([conn1, conn3], name="Cue 2")
+
+        # Initial activation of Cue 1
+        self.manage_cues.go_to_first_cue()
+        self.assertEqual(self.mock_audio.remove_all_calls, 0)
+        self.assertEqual(len(self.patcher.connections), 2)
+        self.assertIn(conn1, self.patcher.connections)
+        self.assertIn(conn2, self.patcher.connections)
+
+        # Clear mock call histories to inspect only transition calls
+        self.mock_audio.connect_calls.clear()
+        self.mock_audio.disconnect_calls.clear()
+        self.mock_audio.remove_all_calls = 0
+
+        # Transition from Cue 1 to Cue 2
+        self.manage_cues.go_to_next_cue()
+
+        # Assert no full router reset occurred
+        self.assertEqual(self.mock_audio.remove_all_calls, 0)
+
+        # Assert conn2 was disconnected, conn3 was connected, and shared conn1 was untouched
+        self.assertEqual(self.mock_audio.disconnect_calls, [("sys:out3", "sys:in4")])
+        self.assertEqual(self.mock_audio.connect_calls, [("sys:out2", "sys:in3")])
+
+        # Verify active router connections and patcher connections
+        self.assertIn(("sys:out1", "sys:in2"), self.mock_audio.connections)
+        self.assertIn(("sys:out2", "sys:in3"), self.mock_audio.connections)
+        self.assertNotIn(("sys:out3", "sys:in4"), self.mock_audio.connections)
+        self.assertEqual(len(self.patcher.connections), 2)
+        self.assertIn(conn1, self.patcher.connections)
+        self.assertIn(conn3, self.patcher.connections)
+
 
 if __name__ == "__main__":
     unittest.main()

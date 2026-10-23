@@ -86,8 +86,18 @@ class ManageConnectionsUseCase:
         self.clear_all_connections()
 
     def apply_connections(self, connections: list[AudioConnection]) -> None:
-        self.clear_all_connections()
-        for conn in connections:
+        to_disconnect = [conn for conn in self.patcher.connections if conn not in connections]
+        to_connect = [conn for conn in connections if conn not in self.patcher.connections]
+
+        for conn in to_disconnect:
+            self.disconnect(
+                conn.source_instrument.name,
+                conn.source_port.name,
+                conn.target_instrument.name,
+                conn.target_port.name,
+            )
+
+        for conn in to_connect:
             self.connect(
                 conn.source_instrument.name,
                 conn.source_port.name,
