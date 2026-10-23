@@ -12,12 +12,12 @@ dependencies = [
     "dataclasses-json",
     "mido",
     "numpy",
-    "PySide6",
     "pyside6-helpers",
     "python-helpers",
     "JACK-Client; sys_platform == 'linux'",
     "jack_server; sys_platform == 'linux'",
     "python-rtmidi; sys_platform == 'linux'",
+    "pyside6==6.8.0.2",
 ]
 
 [project.optional-dependencies]
