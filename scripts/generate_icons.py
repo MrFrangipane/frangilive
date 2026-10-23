@@ -2,8 +2,9 @@
 import sys
 import os
 import json
-from PySide6.QtGui import QPainter, QColor, QImage, QBrush, QPen, QFont
-from PySide6.QtCore import Qt, QRectF, QPointF
+from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont
+from PySide6.QtCore import Qt, QRectF, QPointF, QSize
+from PySide6.QtSvg import QSvgGenerator
 from PySide6.QtWidgets import QApplication
 
 
@@ -63,28 +64,28 @@ def generate_common_elektron(painter, color_accent, label, sub_label):
     painter.setPen(QPen(color_accent))
     painter.drawText(QRectF(90, 60, 20, 10), Qt.AlignRight | Qt.AlignVCenter, sub_label)
 
-def generate_icon(path, generator_func, *args, scale=2.0):
-    base_size = 128
-    size = int(base_size * scale)
-    image = QImage(size, size, QImage.Format_ARGB32)
-    image.fill(Qt.transparent)
-    painter = QPainter(image)
+def generate_icon(path, generator_func, *args, base_size=128, **kwargs):
+    generator = QSvgGenerator()
+    generator.setFileName(path)
+    generator.setSize(QSize(base_size, base_size))
+    generator.setViewBox(QRectF(0, 0, base_size, base_size))
+    title = os.path.splitext(os.path.basename(path))[0]
+    generator.setTitle(title)
+    painter = QPainter()
+    painter.begin(generator)
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setRenderHint(QPainter.TextAntialiasing)
-    painter.setRenderHint(QPainter.SmoothPixmapTransform)
-    painter.scale(scale, scale)
     generator_func(painter, *args)
     painter.end()
-    image.save(path, "PNG")
 
-def generate_syntakt_icon(path, scale=2.0):
-    generate_icon(path, generate_common_elektron, QColor(255, 0, 100), "SYNTAKT", "ST", scale=scale)
+def generate_syntakt_icon(path, **kwargs):
+    generate_icon(path, generate_common_elektron, QColor(255, 0, 100), "SYNTAKT", "ST", **kwargs)
 
-def generate_digitakt_icon(path, scale=2.0):
-    generate_icon(path, generate_common_elektron, QColor(255, 200, 0), "DIGITAKT", "DT", scale=scale)
+def generate_digitakt_icon(path, **kwargs):
+    generate_icon(path, generate_common_elektron, QColor(255, 200, 0), "DIGITAKT", "DT", **kwargs)
 
-def generate_digitone_icon(path, scale=2.0):
-    generate_icon(path, generate_common_elektron, QColor(0, 255, 150), "DIGITONE", "DN", scale=scale)
+def generate_digitone_icon(path, **kwargs):
+    generate_icon(path, generate_common_elektron, QColor(0, 255, 150), "DIGITONE", "DN", **kwargs)
 
 def draw_microphone(painter):
     # Handle
@@ -103,8 +104,8 @@ def draw_microphone(painter):
     for i in range(5):
         painter.drawLine(48 + i*8, 20, 48 + i*8, 65)
 
-def generate_microphone_icon(path, scale=2.0):
-    generate_icon(path, draw_microphone, scale=scale)
+def generate_microphone_icon(path, **kwargs):
+    generate_icon(path, draw_microphone, **kwargs)
 
 def draw_main_lr(painter):
     # Speaker box
@@ -122,8 +123,8 @@ def draw_main_lr(painter):
     painter.drawEllipse(59, 75, 10, 10)
     painter.drawEllipse(61, 41, 6, 6)
 
-def generate_main_lr_icon(path, scale=2.0):
-    generate_icon(path, draw_main_lr, scale=scale)
+def generate_main_lr_icon(path, **kwargs):
+    generate_icon(path, draw_main_lr, **kwargs)
 
 def generate_moogerfooger_base(painter, label):
     # Chassis
@@ -153,8 +154,8 @@ def draw_mf101(painter):
     painter.drawEllipse(58, 75, 12, 12)
     painter.drawEllipse(86, 75, 12, 12)
 
-def generate_mf101_icon(path, scale=2.0):
-    generate_icon(path, draw_mf101, scale=scale)
+def generate_mf101_icon(path, **kwargs):
+    generate_icon(path, draw_mf101, **kwargs)
 
 def draw_murf(painter):
     generate_moogerfooger_base(painter, "MuRF")
@@ -168,8 +169,8 @@ def draw_murf(painter):
         slider_y = 50 + (i % 3) * 10
         painter.drawRect(sx - 3, slider_y, 6, 4)
 
-def generate_murf_icon(path, scale=2.0):
-    generate_icon(path, draw_murf, scale=scale)
+def generate_murf_icon(path, **kwargs):
+    generate_icon(path, draw_murf, **kwargs)
 
 def draw_time_factor(painter):
     # Chassis - Dark charcoal metallic
@@ -249,8 +250,8 @@ def draw_time_factor(painter):
         labels = ["Active", "Repeat", "Tap"]
         painter.drawText(QRectF(fs_x - 15, fs_y + 8, 30, 8), Qt.AlignCenter, labels[i])
 
-def generate_time_factor_icon(path, scale=2.0):
-    generate_icon(path, draw_time_factor, scale=scale)
+def generate_time_factor_icon(path, **kwargs):
+    generate_icon(path, draw_time_factor, **kwargs)
 
 def draw_big_sky(painter):
     # Chassis - Strymon blue
@@ -272,13 +273,10 @@ def draw_big_sky(painter):
     for i in range(2):
         painter.drawEllipse(40 + i*28, 85, 12, 12)
 
-def generate_big_sky_icon(path, scale=2.0):
-    generate_icon(path, draw_big_sky, scale=scale)
+def generate_big_sky_icon(path, **kwargs):
+    generate_icon(path, draw_big_sky, **kwargs)
 
 if __name__ == "__main__":
-    # Configuration
-    ICON_SCALE = 2.0  # Make icons twice larger by default
-    
     # Create an app instance to avoid potential issues with QPainter
     app = QApplication(sys.argv)
     
@@ -304,9 +302,13 @@ if __name__ == "__main__":
     for instrument in devices_data.get("audio_instruments", []):
         name = instrument.get("name")
         if name in generators:
-            filename = name.lower().replace(" ", "_") + ".png"
+            icon_name = instrument.get("icon_name")
+            if icon_name and icon_name.endswith(".svg"):
+                filename = icon_name
+            else:
+                filename = name.lower().replace(" ", "_") + ".svg"
             path = os.path.join(icons_dir, filename)
-            generators[name](path, scale=ICON_SCALE)
-            print(f"Generated icon for {name} (scale={ICON_SCALE}) at {path}")
+            generators[name](path)
+            print(f"Generated icon for {name} at {path}")
         else:
             print(f"No generator found for {name}")

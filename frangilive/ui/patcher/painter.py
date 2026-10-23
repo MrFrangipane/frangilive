@@ -11,7 +11,9 @@ from PySide6.QtGui import (
     QPainterPath,
     QPen,
     QPolygonF,
+    QImage,
 )
+from PySide6.QtSvg import QSvgRenderer
 
 from frangilive.ui.patcher.geometry import (
     MIN_CABLE_LENGTH,
@@ -473,4 +475,9 @@ class PatcherPainterMixin:
                     icon_size,
                     icon_size,
                 )
-                painter.drawImage(icon_rect, icon)
+                if isinstance(icon, QSvgRenderer):
+                    icon.render(painter, icon_rect)
+                elif isinstance(icon, QImage):
+                    painter.drawImage(icon_rect, icon)
+                elif hasattr(icon, "render"):
+                    icon.render(painter, icon_rect)

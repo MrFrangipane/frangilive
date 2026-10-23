@@ -2,6 +2,7 @@ import math
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QKeyEvent, QMouseEvent, QPainterPath, QImage
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QMenu, QWidget
 from importlib.resources import files, as_file
 
@@ -70,7 +71,7 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
         self._node_rects: dict[str, QRectF] = {}
 
         # Icon cache
-        self._icons: dict[str, QImage] = {}
+        self._icons: dict[str, QSvgRenderer | QImage] = {}
         self._load_icons()
 
     def _load_icons(self):
@@ -81,9 +82,14 @@ class PatcherWidget(PatcherPainterMixin, QWidget):
                 try:
                     icon_path = icons_resource.joinpath(instrument.icon_name)
                     with as_file(icon_path) as p:
-                        image = QImage(str(p))
-                        if not image.isNull():
-                            self._icons[instrument.name] = image
+                        if instrument.icon_name.lower().endswith(".svg"):
+                            renderer = QSvgRenderer(str(p))
+                            if renderer.isValid():
+                                self._icons[instrument.name] = renderer
+                        else:
+                            image = QImage(str(p))
+                            if not image.isNull():
+                                self._icons[instrument.name] = image
                 except Exception as e:
                     print(f"Failed to load icon {instrument.icon_name} for {instrument.name}: {e}")
 
