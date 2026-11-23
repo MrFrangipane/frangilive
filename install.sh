@@ -2,7 +2,7 @@
 
 # OVERWITCH
 
-sudo apt install automake libtool libusb-1.0-0-dev libjack-jackd2-dev libsamplerate0-dev libsndfile1-dev autopoint gettext libsystemd-dev libjson-glib-dev python3-virtualenv jackd
+sudo apt install automake libtool libusb-1.0-0-dev libjack-jackd2-dev libsamplerate0-dev libsndfile1-dev autopoint gettext libsystemd-dev libjson-glib-dev python3-virtualenv jackd build-essential pkg-config
 
 cd ~
 

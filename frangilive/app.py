@@ -27,6 +27,7 @@ class FrangiliveApp:
     ):
         self.device_repo = device_repo
         self.device_library = self.device_repo.load_library()
+        audio_router.configure_ports(self.device_library)
         self.patcher = Patcher(device_library=self.device_library)
         self.cue_repo = cue_repo if cue_repo is not None else JsonCueRepository()
 
