@@ -28,17 +28,24 @@ Overwitch is needed for supported Elektron USB audio devices. For those devices,
 
 ```bash
 sudo apt install git automake autoconf libtool libusb-1.0-0-dev libjack-jackd2-dev libsamplerate0-dev libsndfile1-dev autopoint gettext libsystemd-dev libjson-glib-dev build-essential pkg-config
+
 cd ~
 git clone https://github.com/dagargo/overwitch.git
 cd overwitch
 git checkout 2.2
+
 autoreconf --install
 CLI_ONLY=yes ./configure
+make clean
 make
 sudo make install
 sudo ldconfig
+
 cd udev && sudo make install
+
 cd ../systemd && sudo make install
+
+systemctl --user daemon-reload
 systemctl --user enable --now overwitch.service
 ```
 
