@@ -40,3 +40,9 @@ Run the Qt UI:
 ```bash
 uv run python -m frangilive.ui
 ```
+
+### Releases
+
+GitHub Actions builds the Qt application for Linux ARM64. Pull requests and manual runs provide downloadable workflow artifacts; pushing a `v*` tag publishes them as release assets.
+
+The Linux ARM64 archive targets 64-bit Raspberry Pi OS Bookworm or newer (glibc 2.35 or newer); 32-bit Raspberry Pi OS is not supported. Extract the complete archive and run `frangilive-app/frangilive-app` from a writable working directory. Linux archives include the native JACK matrix; JACK, `jack_control`, audio/MIDI hardware and any required Overwitch service must still be installed and configured on the host. Cue data is saved as `cues.json` in the working directory.
