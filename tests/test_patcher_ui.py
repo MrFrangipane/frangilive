@@ -9,6 +9,7 @@ from frangilive.audio.infrastructure.mock_audio_system import MockAudioSystem
 from frangilive.devices.infrastructure.json_device_repository import JsonDeviceRepository
 from frangilive.midi.infrastructure.mido_midi_gateway import MidoMidiGateway
 from frangilive.ui.patcher.config import PatcherWidgetConfig
+from frangilive.ui.patcher.geometry import node_shape, trimmed_curved_path_between_shapes
 from frangilive.ui.patcher.patcher_widget import PatcherWidget
 from frangilive.ui.patcher.port_selector import PortSelectorDialog
 
@@ -44,6 +45,19 @@ class TestPatcherUI(unittest.TestCase):
             rect = rects[inst.name]
             self.assertGreater(rect.width(), 0)
             self.assertGreater(rect.height(), 0)
+
+    def test_adjacent_devices_have_visible_cable_on_compact_screen(self):
+        self.widget.resize(600, 400)
+        rects = self.widget._calculate_node_rects()
+        source = rects["MF-101"]
+        target = rects["Main LR"]
+        path = trimmed_curved_path_between_shapes(
+            node_shape(source), source.center(), node_shape(target), target.center(),
+            center=QPointF(self.widget.width() / 2, self.widget.height() / 2),
+            curvature=self.widget.config.wire_curvature,
+        )
+        self.assertFalse(source.intersects(target), f"{source}, {target}, {list(rects)}")
+        self.assertGreater(path.length(), self.widget.config.connection_arrow_size)
 
     def test_drag_and_connect_default_ports(self):
         # Digitakt (has outputs) -> Main LR (has inputs)

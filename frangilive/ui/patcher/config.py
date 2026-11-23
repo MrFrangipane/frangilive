@@ -6,8 +6,8 @@ class PatcherWidgetConfig:
     long_press_interval: int = 400
     hover_long_press_interval: int = 500
 
-    node_width: float = 120.0
-    node_height: float = 110.0
+    node_width: float = 80.0
+    node_height: float = 65.0
     node_margin_padding: float = 24.0
     min_layout_radius: float = 80.0
     node_touch_padding: float = 10.0
@@ -66,10 +66,10 @@ class PatcherWidgetConfig:
     node_name_font_size: int = 11
     node_port_font_size: int = 8
     node_icon_size: float = 32.0
-    node_icon_scale: float = 2.0
-    node_icon_padding: float = 6.0
+    node_icon_scale: float = 1.0
+    node_icon_padding: float = 3.0
     node_name_rect_x_padding: float = 4.0
-    node_name_rect_y_padding: float = 8.0
+    node_name_rect_y_padding: float = 5.0
     node_name_rect_height: float = 20.0
     node_port_rect_x_padding: float = 4.0
     node_port_rect_y: float = 34.0
