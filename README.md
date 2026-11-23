@@ -1,48 +1,72 @@
 # Frangilive
 
-Frangilive live setup controller.
+![Main window](screenshot.jpg)
 
-## Setup & Running with UV
+Frangilive is a touch-friendly live audio patcher with cues for recalling your setup during a performance.
 
-### Development Setup (Windows / Mock Mode)
-Install core dependencies for local development:
-```bash
-uv sync
-```
+## Set up a fresh Raspberry Pi
 
-### Hardware Deployment (Linux / Raspberry Pi)
-
-Install full dependencies including JACK and MIDI hardware drivers:
+Use **64-bit Raspberry Pi OS Bookworm or newer** with a graphical desktop and Internet access. The build is Linux ARM64 only; 32-bit Raspberry Pi OS is not supported. Open a terminal in the desktop session and install the host tools:
 
 ```bash
-source ./install.sh
+sudo apt update
+sudo apt install jackd2 alsa-utils dbus-user-session libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 curl unzip
 ```
+
+During JACK installation, follow the realtime-priority prompt if offered. If you enable realtime scheduling, log out and back in so the audio group permissions take effect. Connect your audio and MIDI devices. The app currently searches for an ALSA audio interface containing **Fireface** in its name; check that it appears with:
 
 ```bash
-uv sync --extra pi
+aplay -l
+command -v jack_control
 ```
 
-Build the native JACK matrix from the project root (also rebuild it after updating its sources):
+The interface name is currently fixed in the application, not configurable in the UI. The app stops and reconfigures JACK at startup (ALSA, 48 kHz, 128 frames, three periods), so save work in other JACK applications first.
+
+### Overwitch
+
+Overwitch is needed for supported Elektron USB audio devices. For those devices, the repository's existing setup uses Overwitch 2.1. Install its build dependencies and build it separately from the packaged app:
 
 ```bash
-make -C native
+sudo apt install git automake autoconf libtool libusb-1.0-0-dev libjack-jackd2-dev libsamplerate0-dev libsndfile1-dev autopoint gettext libsystemd-dev libjson-glib-dev build-essential pkg-config
+cd ~
+git clone https://github.com/dagargo/overwitch.git
+cd overwitch
+git checkout 2.2
+autoreconf --install
+CLI_ONLY=yes ./configure
+make
+sudo make install
+sudo ldconfig
+cd udev && sudo make install
+cd ../systemd && sudo make install
+systemctl --user enable --now overwitch.service
 ```
 
-The application starts the matrix after JACK, connects configured device ports to it, and applies patch changes with a 5 ms fade. Audio is processed entirely in the native JACK client. Device wiring is retried when ports appear; the matrix supports up to 128 distinct source and 128 distinct destination channels. The native tests can be run with `make -C native test`.
+Run the user service commands as your desktop user, not with `sudo`. Reconnect the device or reboot after installing the udev rules. Check `systemctl --user status overwitch.service` if it does not appear. Frangilive attempts to restart this service at startup; a warning is expected if Overwitch is not installed. See the [Overwitch project](https://github.com/dagargo/overwitch) for supported devices and troubleshooting.
 
-### Running the Application
-Run the headless patcher / MIDI forwarder:
-```bash
-uv run python main.py
-```
+## Download and run
 
-Run the Qt UI:
-```bash
-uv run python -m frangilive.ui
-```
+The archive contains the application and native JACK matrix; Python, UV, a source checkout, and the repository's root scripts are not needed to run it.
 
-### Releases
+1. Download `frangilive-linux-arm64.tar.gz` from the [latest release](https://github.com/MrFrangipane/frangilive/releases/latest), or run:
 
-GitHub Actions builds the Qt application for Linux ARM64. Pull requests and manual runs provide downloadable workflow artifacts; pushing a `v*` tag publishes them as release assets.
+   ```bash
+   curl -fL -o frangilive-linux-arm64.tar.gz https://github.com/MrFrangipane/frangilive/releases/latest/download/frangilive-linux-arm64.tar.gz
+   ```
 
-The Linux ARM64 archive targets 64-bit Raspberry Pi OS Bookworm or newer (glibc 2.35 or newer); 32-bit Raspberry Pi OS is not supported. Extract the complete archive and run `frangilive-app/frangilive-app` from a writable working directory. Linux archives include the native JACK matrix; JACK, `jack_control`, audio/MIDI hardware and any required Overwitch service must still be installed and configured on the host. Cue data is saved as `cues.json` in the working directory.
+2. From a writable directory in your graphical desktop session, extract and run it:
+
+   ```bash
+   tar -xzf ~/Downloads/frangilive-linux-arm64.tar.gz
+   ./frangilive-app/frangilive-app
+   ```
+
+   Adjust the archive path if you downloaded it elsewhere; for the `curl` command above, use the location where you ran it. Keep the entire extracted `frangilive-app` directory together. The app saves `cues.json` in the current working directory: always launch from the same directory and back up that file.
+
+### Download a GitHub Actions build
+
+Open [Actions](https://github.com/MrFrangipane/frangilive/actions), select a successful **Build and release** run, and download the `frangilive-linux-arm64` artifact. GitHub may require you to sign in. Extract the downloaded ZIP to get `frangilive-linux-arm64.tar.gz`, then follow the extraction and launch steps above. Artifacts expire; tagged releases provide release assets instead.
+
+## Using Frangilive
+
+Drag between devices in the patcher to create connections. Use the **CUES** sidebar to create and save cues, select a cue, or move between cues during a performance. The app wires configured device ports through its JACK matrix and retries when ports appear.
