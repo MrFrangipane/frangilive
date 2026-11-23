@@ -28,6 +28,7 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
         self._matrix = None
         self._wire_stop = threading.Event()
         self._wire_thread = None
+        self._missing_wires = set()
 
     def configure_ports(self, device_library) -> None:
         if self._matrix is not None:
@@ -51,19 +52,30 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
             raise RuntimeError(f"JACK matrix command failed: {response or 'process exited'}")
 
     def _wire_ports(self):
+        missing = set()
         for source, index in self._sources.items():
-            self._ensure_wire(source, f"jack-matrix:in_{index}")
+            wire = (source, f"jack-matrix:in_{index}")
+            if not self._ensure_wire(*wire):
+                missing.add(wire)
         for target, index in self._targets.items():
-            self._ensure_wire(f"jack-matrix:out_{index}", target)
+            wire = (f"jack-matrix:out_{index}", target)
+            if not self._ensure_wire(*wire):
+                missing.add(wire)
+        for source, target in sorted(missing - self._missing_wires):
+            _logger.warning("JACK matrix connection missing: %s -> %s; retrying", source, target)
+        for source, target in sorted(self._missing_wires - missing):
+            _logger.info("JACK matrix connection restored: %s -> %s", source, target)
+        self._missing_wires = missing
 
     def _ensure_wire(self, source, target):
         try:
             port = self._jack_client.get_port_by_name(source)
             if target not in {p.name for p in self._jack_client.get_all_connections(port)}:
                 self._jack_client.connect(source, target)
+            return target in {p.name for p in self._jack_client.get_all_connections(port)}
         except jack.JackError:
             # Devices may appear after JACK starts; the worker retries their wiring.
-            pass
+            return False
 
     def _wire_loop(self):
         while not self._wire_stop.wait(1):
@@ -167,6 +179,7 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
         if self._wire_thread:
             self._wire_thread.join()
             self._wire_thread = None
+        self._missing_wires.clear()
         if self._matrix:
             self._matrix.stdin.close()
             try:

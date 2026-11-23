@@ -55,6 +55,48 @@ class MatrixRoutingTest(unittest.TestCase):
         client.connect.assert_any_call("jack-matrix:out_1", "sink:2")
         self.assertFalse(self.system._routes)
 
+    def test_wiring_verifies_every_connection_and_retries_missing_ones(self):
+        connections = set()
+        unavailable = {"source:2", "sink:2"}
+        client = Mock()
+        client.get_port_by_name.side_effect = lambda name: name
+        client.get_all_connections.side_effect = lambda port: [
+            SimpleNamespace(name=target) for source, target in connections if source == port
+        ]
+
+        class JackError(Exception):
+            pass
+
+        def connect(source, target):
+            if source in unavailable or target in unavailable:
+                raise JackError("port unavailable")
+            connections.add((source, target))
+
+        client.connect.side_effect = connect
+        self.system._jack_client = client
+        with patch("frangilive.audio.infrastructure.jack_audio_system.jack", SimpleNamespace(JackError=JackError)):
+            with self.assertLogs("frangilive.audio.infrastructure.jack_audio_system", level="WARNING") as logs:
+                self.system._wire_ports()
+            self.assertIn("source:2", " ".join(logs.output))
+            self.assertIn("sink:2", " ".join(logs.output))
+            self.assertEqual(len(connections), 2)
+            unavailable.clear()
+            self.system._wire_ports()
+            self.assertEqual(len(connections), 4)
+            connections.remove(("source:1", "jack-matrix:in_0"))
+            self.system._wire_ports()
+            self.assertEqual(len(connections), 4)
+
+    def test_wiring_reports_connection_not_observed_after_connect(self):
+        client = Mock()
+        client.get_all_connections.return_value = []
+        self.system._jack_client = client
+        with patch("frangilive.audio.infrastructure.jack_audio_system.jack", SimpleNamespace(JackError=Exception)):
+            with self.assertLogs("frangilive.audio.infrastructure.jack_audio_system", level="WARNING") as logs:
+                self.system._wire_ports()
+        self.assertIn("source:1", " ".join(logs.output))
+        self.assertIn("sink:1", " ".join(logs.output))
+
     def test_start_replays_queued_routes_and_stop_closes_process(self):
         self.system.connect("source:2", "sink:1")
         client = Mock()
