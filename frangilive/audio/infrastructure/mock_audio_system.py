@@ -25,6 +25,12 @@ class MockAudioSystem(AudioRouterGateway, AudioEngineGateway):
     def is_running(self) -> bool:
         return self._running
 
+    def set_connections(self, routes: list[tuple[str, str]]) -> None:
+        desired = set(routes)
+        self.disconnect_calls.extend(sorted(self.connections - desired))
+        self.connect_calls.extend(sorted(desired - self.connections))
+        self.connections = desired
+
     def connect(self, source_port_name: str, target_port_name: str) -> None:
         _logger.info(f"Mock: Connecting {source_port_name} to {target_port_name}")
         self.connections.add((source_port_name, target_port_name))

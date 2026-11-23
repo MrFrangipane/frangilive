@@ -19,6 +19,6 @@ QUIT
 OK
 ```
 
-`SET input output enabled` uses zero-based port indices and enabled must be 0 or 1. `OK` acknowledges receipt, not completion of the fade; malformed commands return `ERR invalid command`. Lines longer than 255 bytes return `ERR line too long`. `QUIT` or stdin EOF closes the client. Diagnostics are written to stderr. Route changes are read at audio-block boundaries and ramp linearly from their current level; rapid changes can be coalesced before the next block.
+`MATRIX 0,1 2,3` replaces the entire routing matrix with the listed input,output pairs; `MATRIX` with no pairs disables every route. Indices are zero-based, duplicates are harmless, and an invalid pair rejects the whole command without changing the matrix. `SET input output enabled` remains available for individual changes, with enabled equal to 0 or 1. Each accepted command publishes a complete snapshot; the audio callback adopts the latest snapshot at a block boundary, so all changed routes start fading together. Rapid commands can be coalesced before the next block. `OK` acknowledges receipt, not completion of the fade; malformed commands return `ERR invalid command`. Lines exceeding the input buffer (131087 characters before the terminating NUL) return `ERR line too long`. `QUIT` or stdin EOF closes the client. Diagnostics are written to stderr. Routes ramp linearly from their current level.
 
 Run the native mixing and fade tests with `make -C native test`. They require the JACK development library but not a running JACK server.

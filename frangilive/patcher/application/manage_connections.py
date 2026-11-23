@@ -86,21 +86,21 @@ class ManageConnectionsUseCase:
         self.clear_all_connections()
 
     def apply_connections(self, connections: list[AudioConnection]) -> None:
-        to_disconnect = [conn for conn in self.patcher.connections if conn not in connections]
-        to_connect = [conn for conn in connections if conn not in self.patcher.connections]
+        candidate = Patcher(self.patcher.device_library,
+                            [conn for conn in self.patcher.connections if conn in connections])
+        for conn in connections:
+            if conn not in candidate.connections and candidate.can_add_connection(conn):
+                candidate.add_connection(conn)
 
-        for conn in to_disconnect:
-            self.disconnect(
-                conn.source_instrument.name,
-                conn.source_port.name,
-                conn.target_instrument.name,
-                conn.target_port.name,
-            )
-
-        for conn in to_connect:
-            self.connect(
-                conn.source_instrument.name,
-                conn.source_port.name,
-                conn.target_instrument.name,
-                conn.target_port.name,
-            )
+        routes = []
+        for conn in candidate.connections:
+            source, target = conn.source_port, conn.target_port
+            routes.append((source.left, target.left))
+            if source.is_stereo and target.is_stereo:
+                routes.append((source.right, target.right))
+            elif source.is_stereo:
+                routes.append((source.right, target.left))
+            elif target.is_stereo:
+                routes.append((source.left, target.right))
+        self.router_gateway.set_connections(routes)
+        self.patcher.connections[:] = candidate.connections

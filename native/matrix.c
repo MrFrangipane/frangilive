@@ -8,15 +8,28 @@
 #include <math.h>
 
 #define MAX_PORTS 128
+#define ROUTES (MAX_PORTS * MAX_PORTS)
+#define LINE_SIZE (8 * ROUTES + 16)
+#define DIRTY 4u
 
 typedef struct {
     jack_client_t *client;
     unsigned inputs, outputs, fade_samples;
     jack_port_t *in[MAX_PORTS], *out[MAX_PORTS];
     const jack_default_audio_sample_t *in_buffer[MAX_PORTS];
-    _Atomic unsigned char target[MAX_PORTS * MAX_PORTS];
+    unsigned char target[3][ROUTES], control[ROUTES], staging[ROUTES];
+    _Atomic unsigned middle;
+    unsigned writer, reader;
     float gain[MAX_PORTS * MAX_PORTS];
 } matrix_t;
+
+static void publish(matrix_t *m)
+{
+    unsigned previous;
+    memcpy(m->target[m->writer], m->control, m->inputs * m->outputs);
+    previous = atomic_exchange_explicit(&m->middle, m->writer | DIRTY, memory_order_acq_rel);
+    m->writer = previous & ~DIRTY;
+}
 
 static int process(jack_nframes_t nframes, void *arg)
 {
@@ -24,6 +37,8 @@ static int process(jack_nframes_t nframes, void *arg)
     unsigned i, o;
     jack_nframes_t n;
     float step = 1.0f / m->fade_samples;
+    if (atomic_load_explicit(&m->middle, memory_order_acquire) & DIRTY)
+        m->reader = atomic_exchange_explicit(&m->middle, m->reader, memory_order_acq_rel) & ~DIRTY;
     for (i = 0; i < m->inputs; ++i)
         m->in_buffer[i] = jack_port_get_buffer(m->in[i], nframes);
     for (o = 0; o < m->outputs; ++o) {
@@ -32,7 +47,7 @@ static int process(jack_nframes_t nframes, void *arg)
         for (i = 0; i < m->inputs; ++i) {
             unsigned index = o * m->inputs + i;
             float gain = m->gain[index];
-            float target = atomic_load_explicit(&m->target[index], memory_order_relaxed) ? 1.0f : 0.0f;
+            float target = m->target[m->reader][index] ? 1.0f : 0.0f;
             if (gain == 0.0f && target == 0.0f) continue;
             for (n = 0; n < nframes; ++n) {
                 if (gain < target) gain = fminf(target, gain + step);
@@ -56,12 +71,30 @@ static int parse_uint(const char *s, unsigned *out, unsigned max)
     return 1;
 }
 
+static int parse_matrix(matrix_t *m, char **save)
+{
+    char *pair;
+    memset(m->staging, 0, m->inputs * m->outputs);
+    while ((pair = strtok_r(NULL, " \t\r\n", save))) {
+        char *comma = strchr(pair, ',');
+        unsigned input, output;
+        if (!comma) return 0;
+        *comma++ = '\0';
+        if (!parse_uint(pair, &input, m->inputs - 1) ||
+            !parse_uint(comma, &output, m->outputs - 1)) return 0;
+        m->staging[output * m->inputs + input] = 1;
+    }
+    memcpy(m->control, m->staging, m->inputs * m->outputs);
+    publish(m);
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
     matrix_t *m = calloc(1, sizeof(*m));
     const char *name = "jack-matrix";
     unsigned fade_ms = 5, i;
-    char port_name[32], line[256];
+    char port_name[32], line[LINE_SIZE];
     int status = 1;
     if (!m) return 1;
     for (i = 1; i < (unsigned)argc; ++i) {
@@ -77,12 +110,11 @@ int main(int argc, char **argv)
         else goto usage;
     }
     if (!m->inputs || !m->outputs) goto usage;
-    for (i = 0; i < m->inputs * m->outputs; ++i) {
-        atomic_init(&m->target[i], 0);
-        if (!atomic_is_lock_free(&m->target[i])) {
-            fprintf(stderr, "atomic route state is not lock-free\n");
-            goto done;
-        }
+    m->writer = 0; m->reader = 1;
+    atomic_init(&m->middle, 2);
+    if (!atomic_is_lock_free(&m->middle)) {
+        fprintf(stderr, "atomic route state is not lock-free\n");
+        goto done;
     }
     m->client = jack_client_open(name, JackNoStartServer | JackUseExactName, NULL);
     if (!m->client) { fprintf(stderr, "cannot open JACK client\n"); goto done; }
@@ -108,6 +140,10 @@ int main(int argc, char **argv)
             puts("ERR line too long"); fflush(stdout); continue;
         }
         command = strtok_r(line, " \t\r\n", &save);
+        if (command && !strcmp(command, "MATRIX")) {
+            puts(parse_matrix(m, &save) ? "OK" : "ERR invalid command");
+            fflush(stdout); continue;
+        }
         a = strtok_r(NULL, " \t\r\n", &save);
         b = strtok_r(NULL, " \t\r\n", &save);
         c = strtok_r(NULL, " \t\r\n", &save);
@@ -118,7 +154,8 @@ int main(int argc, char **argv)
         if (command && !strcmp(command, "SET") && a && b && c && !extra &&
             parse_uint(a, &input, m->inputs - 1) && parse_uint(b, &output, m->outputs - 1) &&
             parse_uint(c, &enabled, 1)) {
-            atomic_store_explicit(&m->target[output * m->inputs + input], (unsigned char)enabled, memory_order_relaxed);
+            m->control[output * m->inputs + input] = (unsigned char)enabled;
+            publish(m);
             puts("OK");
         } else puts("ERR invalid command");
         fflush(stdout);

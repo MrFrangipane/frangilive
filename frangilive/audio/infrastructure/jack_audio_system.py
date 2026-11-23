@@ -3,6 +3,7 @@ import re
 import subprocess
 import threading
 import time
+from collections import Counter
 from pathlib import Path
 
 try:
@@ -50,6 +51,20 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
         response = self._matrix.stdout.readline().strip()
         if response != "OK":
             raise RuntimeError(f"JACK matrix command failed: {response or 'process exited'}")
+
+    def set_connections(self, routes: list[tuple[str, str]]) -> None:
+        counts = Counter(routes)
+        if any(source not in self._sources or target not in self._targets for source, target in counts):
+            raise ValueError("Unknown matrix source or target port")
+        if self._matrix:
+            pairs = sorted((self._sources[source], self._targets[target]) for source, target in counts)
+            command = "MATRIX" + "".join(f" {source},{target}" for source, target in pairs) + "\n"
+            self._matrix.stdin.write(command)
+            self._matrix.stdin.flush()
+            response = self._matrix.stdout.readline().strip()
+            if response != "OK":
+                raise RuntimeError(f"JACK matrix command failed: {response or 'process exited'}")
+        self._routes = dict(counts)
 
     def _wire_ports(self):
         missing = set()
@@ -164,8 +179,7 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
             if self._matrix.stdout.readline().strip() != "OK":
                 raise RuntimeError("JACK matrix failed to start")
             self._wire_ports()
-            for source, target in self._routes:
-                self._set_route(source, target, True)
+            self.set_connections([route for route, count in self._routes.items() for _ in range(count)])
             self._wire_stop.clear()
             self._wire_thread = threading.Thread(target=self._wire_loop, daemon=True)
             self._wire_thread.start()
@@ -220,7 +234,4 @@ class JackAudioSystem(AudioRouterGateway, AudioEngineGateway):
             self._routes[route] = count - 1
 
     def remove_all_connections(self) -> None:
-        for source, target in list(self._routes):
-            if self._matrix:
-                self._set_route(source, target, False)
-            del self._routes[(source, target)]
+        self.set_connections([])

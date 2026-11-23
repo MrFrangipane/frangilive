@@ -7,6 +7,9 @@ from frangilive.audio.infrastructure.jack_audio_system import JackAudioSystem
 from frangilive.devices.domain.audio_instrument import AudioInstrument
 from frangilive.devices.domain.audio_port import AudioPort
 from frangilive.devices.domain.device_library import DeviceLibrary
+from frangilive.patcher.application.manage_connections import ManageConnectionsUseCase
+from frangilive.patcher.domain.audio_connection import AudioConnection
+from frangilive.patcher.domain.patcher import Patcher
 
 
 class MatrixRoutingTest(unittest.TestCase):
@@ -28,14 +31,58 @@ class MatrixRoutingTest(unittest.TestCase):
         self.system.connect("source:2", "sink:2")
         self.assertEqual(self.process.stdin.getvalue(), "SET 0 0 0\nSET 1 1 1\n")
 
+    def test_cue_transition_sends_one_complete_matrix(self):
+        source = AudioInstrument("source", outputs=[AudioPort("out", "source:1", "source:2")])
+        target = AudioInstrument("target", inputs=[AudioPort("in", "sink:1", "sink:2")])
+        patcher = Patcher(DeviceLibrary("test", [source, target]))
+        use_case = ManageConnectionsUseCase(self.system, patcher)
+        connection = AudioConnection(source, source.outputs[0], target, target.inputs[0])
+        self.system._matrix = self.process
+        use_case.apply_connections([connection])
+        self.assertEqual(self.process.stdin.getvalue(), "MATRIX 0,0 1,1\n")
+        self.process.stdin.seek(0)
+        self.process.stdin.truncate()
+        use_case.apply_connections([])
+        self.assertEqual(self.process.stdin.getvalue(), "MATRIX\n")
+
+    def test_cue_replacement_is_one_command_and_failure_keeps_patch(self):
+        source = AudioInstrument("source", outputs=[AudioPort("first", "source:1"),
+                                                    AudioPort("second", "source:2")])
+        target = AudioInstrument("target", inputs=[AudioPort("in", "sink:1")])
+        patcher = Patcher(DeviceLibrary("test", [source, target]))
+        use_case = ManageConnectionsUseCase(self.system, patcher)
+        first = AudioConnection(source, source.outputs[0], target, target.inputs[0])
+        second = AudioConnection(source, source.outputs[1], target, target.inputs[0])
+        use_case.apply_connections([first])
+        self.system._matrix = self.process
+        self.process.stdout = io.StringIO("ERR invalid command\nOK\n")
+        with self.assertRaises(RuntimeError):
+            use_case.apply_connections([second])
+        self.assertEqual(patcher.connections, [first])
+        use_case.apply_connections([second])
+        self.assertEqual(self.process.stdin.getvalue(), "MATRIX 1,0\nMATRIX 1,0\n")
+        self.assertEqual(patcher.connections, [second])
+
     def test_clear_only_disables_matrix_routes(self):
         self.system._matrix = self.process
         self.system.connect("source:1", "sink:1")
         self.system.connect("source:2", "sink:1")
         self.system.remove_all_connections()
         self.assertEqual(self.process.stdin.getvalue(),
-                         "SET 0 0 1\nSET 1 0 1\nSET 0 0 0\nSET 1 0 0\n")
+                         "SET 0 0 1\nSET 1 0 1\nMATRIX\n")
         self.assertFalse(self.system._routes)
+
+    def test_bulk_update_preserves_counts_and_failure_leaves_state_unchanged(self):
+        route = ("source:1", "sink:1")
+        self.system.set_connections([route, route])
+        self.system._matrix = self.process
+        self.process.stdout = io.StringIO("ERR invalid command\n")
+        with self.assertRaises(RuntimeError):
+            self.system.set_connections([("source:2", "sink:2")])
+        self.assertEqual(self.system._routes, {route: 2})
+        self.process.stdout = io.StringIO("OK\n")
+        self.system.disconnect(*route)
+        self.assertEqual(self.system._routes, {route: 1})
 
     def test_failure_does_not_change_route_state(self):
         self.process.stdout = io.StringIO("ERR invalid command\n")
@@ -112,7 +159,7 @@ class MatrixRoutingTest(unittest.TestCase):
              patch.object(self.system, "_run_jack_control"):
             self.system.start()
             self.assertTrue(self.system.is_running())
-            self.assertEqual(self.process.stdin.getvalue(), "SET 0 0 0\nSET 1 0 1\n")
+            self.assertEqual(self.process.stdin.getvalue(), "SET 0 0 0\nMATRIX 1,0\n")
             self.system.stop()
         client.close.assert_called_once()
         self.process.wait.assert_called_once()
