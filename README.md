@@ -70,6 +70,14 @@ The archive contains the application and native JACK matrix; Python, UV, a sourc
 
    Adjust the archive path if you downloaded it elsewhere; for the `curl` command above, use the location where you ran it. Keep the entire extracted `frangilive-app` directory together. The app saves `cues.json` in the current working directory: always launch from the same directory and back up that file.
 
+### Update
+
+Remove the `frangilive-app` directory and download a new release.
+
+```bash
+rm -rf -d frangilive-app
+```
+
 ### Download a GitHub Actions build
 
 Open [Actions](https://github.com/MrFrangipane/frangilive/actions), select a successful **Build and release** run, and download the `frangilive-linux-arm64` artifact. GitHub may require you to sign in. Extract the downloaded ZIP to get `frangilive-linux-arm64.tar.gz`, then follow the extraction and launch steps above. Artifacts expire; tagged releases provide release assets instead.
